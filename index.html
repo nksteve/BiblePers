@@ -824,34 +824,27 @@ async function fetchNKJV(usfm, ch) {
 }
 
 function parseApiBibleJSON(blocks) {
-  const verses = [];
-  let curNum = null, curText = [];
+  // New rest.api.bible format: text items carry attrs.verseId ("JHN.3.1")
+  // verse tags are just markers; actual text is sibling text nodes with verseId
+  const verseMap = {};
 
-  function walk(items) {
+  function processItems(items) {
     for (const item of items ?? []) {
-      if (item.type === 'tag') {
-        const isVerseStart = item.name === 'verse-start' || item.name === 'v';
-        const isVerseEnd   = item.name === 'verse-end';
-        if (isVerseStart) {
-          if (curNum !== null) verses.push({ verse: curNum, text: curText.join('').trim() });
-          curNum = parseInt(item.attrs?.number ?? item.number ?? curNum + 1);
-          curText = [];
-        } else if (isVerseEnd) {
-          // end marker — flush handled by next verse-start or end of chapter
-        } else {
-          walk(item.items);
-        }
-      } else if (item.type === 'text' && curNum !== null) {
-        curText.push(item.text ?? '');
+      if (item.type === 'text' && item.attrs?.verseId && item.text?.trim()) {
+        const parts = item.attrs.verseId.split('.');
+        const num = parseInt(parts[parts.length - 1]);
+        if (!isNaN(num)) (verseMap[num] = verseMap[num] || []).push(item.text);
+      } else if (item.type === 'tag' && item.name !== 'verse') {
+        processItems(item.items);
       }
     }
   }
 
-  for (const block of blocks) { walk(block.items ?? []); }
-  if (curNum !== null && curText.join('').trim()) {
-    verses.push({ verse: curNum, text: curText.join('').trim() });
-  }
-  return verses.sort((a, b) => a.verse - b.verse);
+  for (const block of blocks) processItems(block.items ?? []);
+
+  return Object.entries(verseMap)
+    .map(([n, t]) => ({ verse: parseInt(n), text: t.join('').trim() }))
+    .sort((a, b) => a.verse - b.verse);
 }
 
 async function fetchTamil(usfm, ch, bookNum) {
