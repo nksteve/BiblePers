@@ -475,13 +475,11 @@
       .parallel-grid.split .panel-fs-controls { flex-shrink: 0; }
       .parallel-grid.split .panel-fs-btn { font-size: 0.62rem; padding: 0.1rem 0.32rem; }
 
-      .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; width: 100%; overflow: hidden; }
-      .parallel-grid.split .verse        { gap: 0.2rem; padding: 0.15rem 0.1rem; width: 100%; }
-      .parallel-grid.split .vtxt,
-      .parallel-grid.split .vtxt.tamil   { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
-      .parallel-grid.split .vnum         { font-size: 0.58rem; min-width: 0.85rem; padding-top: 3px; }
-      .parallel-grid.split .vtxt         { font-size: calc(0.76rem * var(--fs-scale-eng)); line-height: 1.55; }
-      .parallel-grid.split .vtxt.tamil   { font-size: calc(0.72rem * var(--fs-scale-tam)); line-height: 1.6; }
+      .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; display: block; width: 100%; box-sizing: border-box; }
+      .parallel-grid.split .verse        { display: flex; gap: 0.2rem; padding: 0.15rem 0.1rem; box-sizing: border-box; min-width: 0; }
+      .parallel-grid.split .vnum         { font-size: 0.58rem; min-width: 0.85rem; flex-shrink: 0; padding-top: 3px; }
+      .parallel-grid.split .vtxt         { flex: 1; min-width: 0; width: 0; font-size: calc(0.76rem * var(--fs-scale-eng)); line-height: 1.55; overflow-wrap: anywhere; word-break: break-word; }
+      .parallel-grid.split .vtxt.tamil   { flex: 1; min-width: 0; width: 0; font-size: calc(0.72rem * var(--fs-scale-tam)); line-height: 1.6;  overflow-wrap: anywhere; word-break: break-word; }
       .parallel-grid.split .section-head { font-size: calc(0.65rem * var(--fs-scale-tam)); margin: 0.5rem 0 0.2rem 0.1rem; }
 
       main.split-active { padding: 0.5rem 0.2rem; }
@@ -791,27 +789,31 @@ function changeFontSize(delta) {
   applyFontSize();
 }
 
+// Per-panel font: step-based, no upper limit. Step 0=min, each step = +0.15 scale.
+// Default step 2 → scale = 0.7 + 2*0.15 = 1.0 (Medium)
+function panelScale(step) { return Math.round((0.7 + step * 0.15) * 100) / 100; }
+
 function applyFontSizeEng() {
-  document.documentElement.style.setProperty('--fs-scale-eng', FONT_SCALES[fontStepEng]);
+  document.documentElement.style.setProperty('--fs-scale-eng', panelScale(fontStepEng));
   if (document.getElementById('engFsDec')) {
     document.getElementById('engFsDec').disabled = fontStepEng === 0;
-    document.getElementById('engFsInc').disabled = fontStepEng === FONT_SCALES.length - 1;
+    document.getElementById('engFsInc').disabled = false; // no upper limit
   }
 }
 function applyFontSizeTam() {
-  document.documentElement.style.setProperty('--fs-scale-tam', FONT_SCALES[fontStepTam]);
+  document.documentElement.style.setProperty('--fs-scale-tam', panelScale(fontStepTam));
   if (document.getElementById('tamFsDec')) {
     document.getElementById('tamFsDec').disabled = fontStepTam === 0;
-    document.getElementById('tamFsInc').disabled = fontStepTam === FONT_SCALES.length - 1;
+    document.getElementById('tamFsInc').disabled = false; // no upper limit
   }
 }
 function changeFontSizeEng(delta) {
-  fontStepEng = Math.max(0, Math.min(FONT_SCALES.length - 1, fontStepEng + delta));
+  fontStepEng = Math.max(0, fontStepEng + delta);
   localStorage.setItem('fontStepEng', fontStepEng);
   applyFontSizeEng();
 }
 function changeFontSizeTam(delta) {
-  fontStepTam = Math.max(0, Math.min(FONT_SCALES.length - 1, fontStepTam + delta));
+  fontStepTam = Math.max(0, fontStepTam + delta);
   localStorage.setItem('fontStepTam', fontStepTam);
   applyFontSizeTam();
 }
