@@ -22,7 +22,9 @@
       --sp-bg:     #ffffff;
       --toggle-off:#ccc;
 
-      --fs-scale: 1;
+      --fs-scale:     1;
+      --fs-scale-eng: 1;
+      --fs-scale-tam: 1;
     }
 
     /* ── Tokens (dark) ── */
@@ -226,14 +228,25 @@
 
     .vtxt {
       font-family: 'Crimson Text', serif;
-      font-size: calc(1.12rem * var(--fs-scale));
+      font-size: calc(1.12rem * var(--fs-scale-eng));
       line-height: 1.78; flex: 1;
     }
     .vtxt.tamil {
       font-family: 'Noto Serif Tamil', serif;
-      font-size: calc(1.05rem * var(--fs-scale));
+      font-size: calc(1.05rem * var(--fs-scale-tam));
       line-height: 2;
     }
+
+    /* Per-panel font controls (shown in panel header) */
+    .panel-fs-controls { display: flex; gap: 0.2rem; flex-shrink: 0; }
+    .panel-fs-btn {
+      font-family: 'Inter', sans-serif; font-size: 0.65rem; font-weight: 700;
+      padding: 0.12rem 0.38rem;
+      border: 1px solid rgba(255,255,255,0.28); border-radius: 4px;
+      background: rgba(255,255,255,0.1); color: white; cursor: pointer; line-height: 1;
+    }
+    .panel-fs-btn:hover { background: rgba(255,255,255,0.25); }
+    .panel-fs-btn:disabled { opacity: 0.3; cursor: default; }
 
     /* ── States ── */
     .state-box {
@@ -436,13 +449,23 @@
       .sp-panel { width: 290px; }
 
       /* ── Split view ── */
-      .parallel-grid.split {
-        grid-template-columns: 1fr 1fr;
-        gap: 1px;
-      }
-      /* Remove inner borders so the middle line is just 1px */
+      .parallel-grid.split { display: flex; gap: 0; }
+      .parallel-grid.split .bible-panel { flex: 50; min-width: 0; overflow: hidden; }
       .parallel-grid.split .bible-panel:first-child { border-right: none; border-radius: 8px 0 0 8px; }
       .parallel-grid.split .bible-panel:last-child  { border-left:  none; border-radius: 0 8px 8px 0; }
+
+      /* Drag handle */
+      .split-handle {
+        width: 7px; flex-shrink: 0;
+        background: var(--border);
+        cursor: col-resize; touch-action: none;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .split-handle::after {
+        content: '·'; color: var(--muted); font-size: 1rem; line-height: 1;
+        writing-mode: vertical-rl; letter-spacing: 2px;
+      }
+      .split-handle.dragging, .split-handle:hover { background: var(--navy); }
 
       .parallel-grid.split .panel-head   { padding: 0.4rem 0.3rem; }
       .parallel-grid.split .panel-name   { font-size: 0.78rem; }
@@ -452,9 +475,9 @@
       .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; }
       .parallel-grid.split .verse        { gap: 0.2rem; padding: 0.15rem 0.1rem; }
       .parallel-grid.split .vnum         { font-size: 0.58rem; min-width: 0.85rem; padding-top: 3px; }
-      .parallel-grid.split .vtxt         { font-size: calc(0.76rem * var(--fs-scale)); line-height: 1.55; }
-      .parallel-grid.split .vtxt.tamil   { font-size: calc(0.72rem * var(--fs-scale)); line-height: 1.6; }
-      .parallel-grid.split .section-head { font-size: calc(0.65rem * var(--fs-scale)); margin: 0.5rem 0 0.2rem 0.1rem; }
+      .parallel-grid.split .vtxt         { font-size: calc(0.76rem * var(--fs-scale-eng)); line-height: 1.55; }
+      .parallel-grid.split .vtxt.tamil   { font-size: calc(0.72rem * var(--fs-scale-tam)); line-height: 1.6; }
+      .parallel-grid.split .section-head { font-size: calc(0.65rem * var(--fs-scale-tam)); margin: 0.5rem 0 0.2rem 0.1rem; }
 
       main.split-active { padding: 0.5rem 0.2rem; }
     }
@@ -576,6 +599,10 @@
           <div class="panel-name" id="engLabel">KJV</div>
           <div class="panel-ref"  id="engRef">John 3</div>
         </div>
+        <div class="panel-fs-controls">
+          <button class="panel-fs-btn" id="engFsDec" onclick="changeFontSizeEng(-1)" title="Smaller">A−</button>
+          <button class="panel-fs-btn" id="engFsInc" onclick="changeFontSizeEng(1)"  title="Larger">A+</button>
+        </div>
         <span class="panel-badge">English</span>
       </div>
       <div id="engContent">
@@ -588,6 +615,10 @@
         <div>
           <div class="panel-name tamil">தமிழ் வேதாகமம்</div>
           <div class="panel-ref" id="tamRef">John 3</div>
+        </div>
+        <div class="panel-fs-controls">
+          <button class="panel-fs-btn" id="tamFsDec" onclick="changeFontSizeTam(-1)" title="Smaller">A−</button>
+          <button class="panel-fs-btn" id="tamFsInc" onclick="changeFontSizeTam(1)"  title="Larger">A+</button>
         </div>
         <span class="panel-badge" id="tamBadge">Tamil IRV</span>
       </div>
@@ -700,10 +731,14 @@ const FONT_SCALES = [0.82, 0.92, 1.0, 1.15, 1.32, 1.55, 1.8];
 const FONT_LABELS = ['X-Small', 'Small', 'Medium', 'Large', 'X-Large', '2X-Large', '3X-Large'];
 
 let darkMode    = localStorage.getItem('darkMode') === 'true';
-let fontStep    = parseInt(localStorage.getItem('fontStep') ?? '2'); // default Medium
+let fontStep    = parseInt(localStorage.getItem('fontStep') ?? '2');
+let fontStepEng = parseInt(localStorage.getItem('fontStepEng') ?? '2');
+let fontStepTam = parseInt(localStorage.getItem('fontStepTam') ?? '2');
 let apiKey      = localStorage.getItem('apiBibleKey') || '';
 let tamTrans    = localStorage.getItem('tamTrans') || 'irv';
 let splitLayout = localStorage.getItem('splitLayout') === 'true';
+let splitRatio  = parseFloat(localStorage.getItem('splitRatio') || '50');
+let isDragging  = false;
 
 function initSettings() {
   // Dark mode
@@ -712,6 +747,10 @@ function initSettings() {
 
   // Font size
   applyFontSize();
+
+  // Per-panel font sizes
+  applyFontSizeEng();
+  applyFontSizeTam();
 
   // Split layout
   applySplitLayout();
@@ -747,6 +786,31 @@ function changeFontSize(delta) {
   applyFontSize();
 }
 
+function applyFontSizeEng() {
+  document.documentElement.style.setProperty('--fs-scale-eng', FONT_SCALES[fontStepEng]);
+  if (document.getElementById('engFsDec')) {
+    document.getElementById('engFsDec').disabled = fontStepEng === 0;
+    document.getElementById('engFsInc').disabled = fontStepEng === FONT_SCALES.length - 1;
+  }
+}
+function applyFontSizeTam() {
+  document.documentElement.style.setProperty('--fs-scale-tam', FONT_SCALES[fontStepTam]);
+  if (document.getElementById('tamFsDec')) {
+    document.getElementById('tamFsDec').disabled = fontStepTam === 0;
+    document.getElementById('tamFsInc').disabled = fontStepTam === FONT_SCALES.length - 1;
+  }
+}
+function changeFontSizeEng(delta) {
+  fontStepEng = Math.max(0, Math.min(FONT_SCALES.length - 1, fontStepEng + delta));
+  localStorage.setItem('fontStepEng', fontStepEng);
+  applyFontSizeEng();
+}
+function changeFontSizeTam(delta) {
+  fontStepTam = Math.max(0, Math.min(FONT_SCALES.length - 1, fontStepTam + delta));
+  localStorage.setItem('fontStepTam', fontStepTam);
+  applyFontSizeTam();
+}
+
 function onApiKeyInput() {
   apiKey = document.getElementById('apiKeyInput').value.trim();
   localStorage.setItem('apiBibleKey', apiKey);
@@ -780,6 +844,14 @@ function toggleSplit() {
   applySplitLayout();
 }
 
+function applySplitRatio() {
+  const panels = document.querySelectorAll('.parallel-grid .bible-panel');
+  if (panels.length >= 2) {
+    panels[0].style.flex = splitRatio;
+    panels[1].style.flex = (100 - splitRatio);
+  }
+}
+
 function applySplitLayout() {
   const grid = document.querySelector('.parallel-grid');
   const main = document.querySelector('main');
@@ -787,6 +859,49 @@ function applySplitLayout() {
   grid.classList.toggle('split', splitLayout);
   main.classList.toggle('split-active', splitLayout);
   btn.classList.toggle('active', splitLayout);
+
+  let handle = document.getElementById('splitHandle');
+  if (splitLayout) {
+    if (!handle) {
+      handle = document.createElement('div');
+      handle.id = 'splitHandle';
+      handle.className = 'split-handle';
+      const panels = grid.querySelectorAll('.bible-panel');
+      if (panels.length >= 2) grid.insertBefore(handle, panels[1]);
+      addHandleEvents(handle);
+    }
+    applySplitRatio();
+  } else {
+    if (handle) handle.remove();
+    const panels = grid.querySelectorAll('.bible-panel');
+    panels.forEach(p => p.style.flex = '');
+  }
+}
+
+function addHandleEvents(handle) {
+  let startX, startRatio;
+  const onStart = x => {
+    startX = x; startRatio = splitRatio;
+    handle.classList.add('dragging'); isDragging = true;
+  };
+  const onMove = x => {
+    if (!isDragging) return;
+    const gridW = document.querySelector('.parallel-grid').offsetWidth;
+    splitRatio = Math.max(20, Math.min(80, startRatio + ((x - startX) / gridW) * 100));
+    applySplitRatio();
+  };
+  const onEnd = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    handle.classList.remove('dragging');
+    localStorage.setItem('splitRatio', splitRatio);
+  };
+  handle.addEventListener('mousedown',  e => { onStart(e.clientX); e.preventDefault(); });
+  document.addEventListener('mousemove', e => { if (isDragging) { onMove(e.clientX); e.preventDefault(); } });
+  document.addEventListener('mouseup',   () => onEnd());
+  handle.addEventListener('touchstart',  e => { onStart(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', e => { if (isDragging) { onMove(e.touches[0].clientX); e.preventDefault(); } }, { passive: false });
+  document.addEventListener('touchend',  () => onEnd());
 }
 
 function onTamTransChange() {
