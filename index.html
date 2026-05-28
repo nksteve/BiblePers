@@ -616,6 +616,30 @@
       .logo-sub { display: none; }
       #headerRef { font-size: 0.8rem; }
     }
+
+    /* ── Independent panel scrolling ── */
+
+    /* Desktop: panels sit side-by-side; each scrolls on its own */
+    @media (min-width: 821px) {
+      .bible-panel { display: flex; flex-direction: column; max-height: calc(100vh - 148px); }
+      .panel-head  { flex-shrink: 0; }
+      #engContent, #tamContent { flex: 1; overflow-y: auto; min-height: 0; }
+    }
+
+    /* Mobile split: lock viewport to screen, content divs scroll individually */
+    body.split-locked { overflow: hidden; height: 100dvh; }
+    body.split-locked main.split-active { overflow: hidden; min-height: 0; }
+    body.split-locked .parallel-grid.split { height: 100%; overflow: hidden; }
+    body.split-locked .parallel-grid.split .bible-panel {
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+    body.split-locked .parallel-grid.split .panel-head { flex-shrink: 0; }
+    body.split-locked .parallel-grid.split #engContent,
+    body.split-locked .parallel-grid.split #tamContent {
+      flex: 1; overflow-y: auto; min-height: 0;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
   </style>
 </head>
 <body>
@@ -1006,6 +1030,7 @@ function applySplitLayout() {
   grid.classList.toggle('split', splitLayout);
   main.classList.toggle('split-active', splitLayout);
   btn.classList.toggle('active', splitLayout);
+  document.body.classList.toggle('split-locked', splitLayout);
 
   let handle = document.getElementById('splitHandle');
   if (splitLayout) {
@@ -1432,7 +1457,14 @@ async function loadChapter() {
   syncNav();
   const _shell = document.getElementById('stickyShell');
   if (_shell) _shell.classList.remove('hidden');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Scroll both panels back to top (works whether page-scroll or panel-scroll is active)
+  ['engContent','tamContent'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.scrollTop = 0;
+  });
+  if (!document.body.classList.contains('split-locked')) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   const [eng, tam] = await Promise.allSettled([
     engTr !== 'doc' ? fetchEnglish(book, chapter, engTr) : Promise.resolve(null),
