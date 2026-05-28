@@ -133,6 +133,7 @@
     #bookSelect    { min-width: 148px; }
     #chapterSelect { min-width: 76px; }
     #transSelect   { min-width: 90px; }
+    #tamTransSelect { min-width: 100px; }
 
     .btn {
       font-family: 'Inter', sans-serif;
@@ -477,8 +478,8 @@
                autocomplete="off" spellcheck="false" oninput="onApiKeyInput()">
         <div class="sp-key-status" id="apiKeyStatus"></div>
       </div>
-      <a class="sp-link" href="https://scripture.api.bible" target="_blank">
-        🔗 Get a free key at scripture.api.bible →
+      <a class="sp-link" href="https://api.bible" target="_blank">
+        🔗 Get a free key at api.bible →
       </a>
     </div>
 
@@ -516,6 +517,13 @@
       <option value="web">WEB</option>
     </select>
   </div>
+  <span class="nav-label">Tamil:</span>
+  <div class="sel-wrap">
+    <select id="tamTransSelect" aria-label="Tamil translation" onchange="onTamTransChange()">
+      <option value="irv">IRV</option>
+      <option value="bsi">O.V. BSI</option>
+    </select>
+  </div>
 </nav>
 
 <main>
@@ -540,7 +548,7 @@
           <div class="panel-name tamil">தமிழ் வேதாகமம்</div>
           <div class="panel-ref" id="tamRef">John 3</div>
         </div>
-        <span class="panel-badge">Tamil</span>
+        <span class="panel-badge" id="tamBadge">Tamil IRV</span>
       </div>
       <div id="tamContent">
         <div class="state-box"><div class="spinner"></div><span>Loading…</span></div>
@@ -551,11 +559,13 @@
 </main>
 
 <footer>
-  English: King James Version / World English Bible / NKJV via API.Bible &nbsp;·&nbsp; Tamil: IRV (இண்டியன் ரிவைஸ்டு வெர்ஸன்)<br>
-  <em>NKJV requires a free API.Bible key — enter it in ⚙ Settings.</em><br>
-  English via <a href="https://bible-api.com" target="_blank">bible-api.com</a> &amp; <a href="https://scripture.api.bible" target="_blank">API.Bible</a>
+  English: King James Version / World English Bible / NKJV via API.Bible &nbsp;·&nbsp; Tamil: IRV (இண்டியன் ரிவைஸ்டு வெர்ஸன்) / O.V. BSI (பரிசுத்த வேதாகமம்)<br>
+  <em>NKJV requires a free API.Bible key — enter it in ⚙ Settings. &nbsp;·&nbsp; Switch Tamil version using the Tamil selector in the nav bar.</em><br>
+  English via <a href="https://bible-api.com" target="_blank">bible-api.com</a> &amp; <a href="https://api.bible" target="_blank">API.Bible</a>
   &nbsp;·&nbsp;
-  Tamil via <a href="https://bible.helloao.org" target="_blank">bible.helloao.org</a>
+  Tamil IRV via <a href="https://bible.helloao.org" target="_blank">bible.helloao.org</a>
+  &nbsp;·&nbsp;
+  Tamil O.V. (BSI) via <a href="https://bolls.life" target="_blank">bolls.life</a>
 </footer>
 
 <script>
@@ -633,7 +643,7 @@ const BOOKS = [
   {n:"Revelation",      a:"revelation",      u:"REV", ch:22,  ot:false},
 ];
 
-const NKJV_BIBLE_ID = 'de4e12af7f28f599-02';
+const NKJV_BIBLE_ID = '63097d2a0a2f7db3-01';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Navigation state
@@ -650,6 +660,7 @@ const FONT_LABELS = ['X-Small', 'Small', 'Medium', 'Large', 'X-Large'];
 let darkMode  = localStorage.getItem('darkMode') === 'true';
 let fontStep  = parseInt(localStorage.getItem('fontStep') ?? '2'); // default Medium
 let apiKey    = localStorage.getItem('apiBibleKey') || '';
+let tamTrans  = localStorage.getItem('tamTrans') || 'irv';
 
 function initSettings() {
   // Dark mode
@@ -658,6 +669,9 @@ function initSettings() {
 
   // Font size
   applyFontSize();
+
+  // Tamil translation
+  document.getElementById('tamTransSelect').value = tamTrans;
 
   // API key
   const inp = document.getElementById('apiKeyInput');
@@ -715,6 +729,12 @@ function syncNkjvOption(add) {
     existing.remove();
     if (sel.value === 'nkjv') { sel.value = 'kjv'; loadChapter(); }
   }
+}
+
+function onTamTransChange() {
+  tamTrans = document.getElementById('tamTransSelect').value;
+  localStorage.setItem('tamTrans', tamTrans);
+  loadChapter();
 }
 
 // Settings panel open/close
@@ -793,7 +813,7 @@ async function fetchEnglish(book, ch, trans) {
 async function fetchNKJV(usfm, ch) {
   if (!apiKey) throw new Error('No API key set — enter one in ⚙ Settings');
   const chId = `${usfm}.${ch}`;
-  const url = `https://api.scripture.api.bible/v1/bibles/${NKJV_BIBLE_ID}/chapters/${chId}`
+  const url = `https://rest.api.bible/v1/bibles/${NKJV_BIBLE_ID}/chapters/${chId}`
     + `?content-type=json&include-notes=false&include-titles=false`
     + `&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false`;
   const r = await fetch(url, { headers: { 'api-key': apiKey } });
@@ -834,10 +854,18 @@ function parseApiBibleJSON(blocks) {
   return verses.sort((a, b) => a.verse - b.verse);
 }
 
-async function fetchTamil(usfm, ch) {
+async function fetchTamil(usfm, ch, bookNum) {
+  if (tamTrans === 'bsi') return fetchTamilBolls(bookNum, ch);
   const r = await fetch(`https://bible.helloao.org/api/tam_irv/${usfm}/${ch}.json`);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
+}
+
+async function fetchTamilBolls(bookNum, ch) {
+  const r = await fetch(`https://bolls.life/get-text/TAMOVR/${bookNum}/${ch}/`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const verses = await r.json();
+  return { _bolls: true, verses };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -870,9 +898,19 @@ function extractText(items) {
 function renderTamil(result) {
   if (result.status === 'rejected')
     return errorHTML(`Could not load Tamil — ${result.reason.message}`);
+
+  // bolls.life format: { _bolls: true, verses: [{pk, verse, text}] }
+  if (result.value?._bolls) {
+    const verses = result.value.verses || [];
+    if (!verses.length) return errorHTML('No verses found.');
+    return '<div class="verses-wrap">' + verses.map(v =>
+      `<div class="verse"><span class="vnum">${v.verse}</span><span class="vtxt tamil">${esc(v.text)}</span></div>`
+    ).join('') + '</div>';
+  }
+
+  // helloao.org format
   const content = result.value?.chapter?.content ?? [];
   if (!content.length) return errorHTML('No verses found.');
-
   let html = '<div class="verses-wrap">';
   for (const item of content) {
     if (item.type === 'heading') {
@@ -898,6 +936,7 @@ async function loadChapter() {
   document.getElementById('engLabel').textContent  = trans.toUpperCase();
   document.getElementById('engRef').textContent    = ref;
   document.getElementById('tamRef').textContent    = ref;
+  document.getElementById('tamBadge').textContent  = tamTrans === 'bsi' ? 'O.V. BSI' : 'Tamil IRV';
   document.getElementById('engContent').innerHTML  = loadingHTML();
   document.getElementById('tamContent').innerHTML  = loadingHTML();
   syncNav();
@@ -905,7 +944,7 @@ async function loadChapter() {
 
   const [eng, tam] = await Promise.allSettled([
     fetchEnglish(book, chapter, trans),
-    fetchTamil(book.u, chapter),
+    fetchTamil(book.u, chapter, bookIdx + 1),
   ]);
 
   document.getElementById('engContent').innerHTML = renderEnglish(eng);
