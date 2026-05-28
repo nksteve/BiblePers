@@ -470,16 +470,16 @@
     <div class="sp-section">
       <div class="sp-section-title">NKJV — API.Bible Key</div>
       <div class="sp-row" style="flex-direction:column; align-items:flex-start; gap:0.3rem;">
-        <div class="sp-row-label">Enter your API key to unlock NKJV</div>
-        <div class="sp-row-hint">Free tier: 5,000 calls/day at scripture.api.bible</div>
+        <div class="sp-row-label">Override API key (optional)</div>
+        <div class="sp-row-hint">NKJV works out of the box. Paste your own key here to use your personal quota.</div>
       </div>
       <div class="sp-input-wrap">
-        <input type="text" id="apiKeyInput" placeholder="Paste API key here…"
+        <input type="text" id="apiKeyInput" placeholder="Paste your own API key to override…"
                autocomplete="off" spellcheck="false" oninput="onApiKeyInput()">
         <div class="sp-key-status" id="apiKeyStatus"></div>
       </div>
       <a class="sp-link" href="https://api.bible" target="_blank">
-        🔗 Get a free key at api.bible →
+        🔗 Get your own key at api.bible →
       </a>
     </div>
 
@@ -513,6 +513,7 @@
   <span class="nav-label">English:</span>
   <div class="sel-wrap">
     <select id="transSelect" aria-label="English translation" onchange="loadChapter()">
+      <option value="nkjv">NKJV</option>
       <option value="kjv">KJV</option>
       <option value="web">WEB</option>
     </select>
@@ -560,7 +561,7 @@
 
 <footer>
   English: King James Version / World English Bible / NKJV via API.Bible &nbsp;·&nbsp; Tamil: IRV (இண்டியன் ரிவைஸ்டு வெர்ஸன்) / O.V. BSI (பரிசுத்த வேதாகமம்)<br>
-  <em>NKJV requires a free API.Bible key — enter it in ⚙ Settings. &nbsp;·&nbsp; Switch Tamil version using the Tamil selector in the nav bar.</em><br>
+  <em>Switch Tamil version using the Tamil selector in the nav bar.</em><br>
   English via <a href="https://bible-api.com" target="_blank">bible-api.com</a> &amp; <a href="https://api.bible" target="_blank">API.Bible</a>
   &nbsp;·&nbsp;
   Tamil IRV via <a href="https://bible.helloao.org" target="_blank">bible.helloao.org</a>
@@ -643,7 +644,8 @@ const BOOKS = [
   {n:"Revelation",      a:"revelation",      u:"REV", ch:22,  ot:false},
 ];
 
-const NKJV_BIBLE_ID = '63097d2a0a2f7db3-01';
+const NKJV_BIBLE_ID  = '63097d2a0a2f7db3-01';
+const NKJV_API_KEY   = 'c8-wddtoed35LBTA-qXc7'; // default key — override in ⚙ Settings
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Navigation state
@@ -673,12 +675,11 @@ function initSettings() {
   // Tamil translation
   document.getElementById('tamTransSelect').value = tamTrans;
 
-  // API key
+  // API key (optional override)
   const inp = document.getElementById('apiKeyInput');
   inp.value = apiKey;
   if (apiKey) {
-    syncNkjvOption(true);
-    document.getElementById('apiKeyStatus').textContent = '✓ NKJV unlocked';
+    document.getElementById('apiKeyStatus').textContent = '✓ Using your personal API key';
     document.getElementById('apiKeyStatus').className = 'sp-key-status ok';
   }
 }
@@ -707,11 +708,9 @@ function onApiKeyInput() {
   localStorage.setItem('apiBibleKey', apiKey);
   const statusEl = document.getElementById('apiKeyStatus');
   if (apiKey.length > 10) {
-    syncNkjvOption(true);
-    statusEl.textContent = '✓ NKJV enabled — reload chapter to use';
+    statusEl.textContent = '✓ Using your personal API key';
     statusEl.className = 'sp-key-status ok';
   } else {
-    syncNkjvOption(false);
     statusEl.textContent = '';
   }
 }
@@ -811,12 +810,12 @@ async function fetchEnglish(book, ch, trans) {
 }
 
 async function fetchNKJV(usfm, ch) {
-  if (!apiKey) throw new Error('No API key set — enter one in ⚙ Settings');
+  const key = apiKey || NKJV_API_KEY;
   const chId = `${usfm}.${ch}`;
   const url = `https://rest.api.bible/v1/bibles/${NKJV_BIBLE_ID}/chapters/${chId}`
     + `?content-type=json&include-notes=false&include-titles=false`
     + `&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false`;
-  const r = await fetch(url, { headers: { 'api-key': apiKey } });
+  const r = await fetch(url, { headers: { 'api-key': key } });
   if (r.status === 401) throw new Error('Invalid API key');
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const json = await r.json();
