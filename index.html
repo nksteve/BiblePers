@@ -475,8 +475,10 @@
       .parallel-grid.split .panel-fs-controls { flex-shrink: 0; }
       .parallel-grid.split .panel-fs-btn { font-size: 0.62rem; padding: 0.1rem 0.32rem; }
 
-      .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; }
-      .parallel-grid.split .verse        { gap: 0.2rem; padding: 0.15rem 0.1rem; }
+      .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; width: 100%; overflow: hidden; }
+      .parallel-grid.split .verse        { gap: 0.2rem; padding: 0.15rem 0.1rem; width: 100%; }
+      .parallel-grid.split .vtxt,
+      .parallel-grid.split .vtxt.tamil   { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
       .parallel-grid.split .vnum         { font-size: 0.58rem; min-width: 0.85rem; padding-top: 3px; }
       .parallel-grid.split .vtxt         { font-size: calc(0.76rem * var(--fs-scale-eng)); line-height: 1.55; }
       .parallel-grid.split .vtxt.tamil   { font-size: calc(0.72rem * var(--fs-scale-tam)); line-height: 1.6; }
