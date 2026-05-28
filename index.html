@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parallel Bible — English &amp; Tamil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&family=Noto+Serif+Tamil:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Tokens (light) ── */
+    :root {
+      --navy:      #1b3a5e;
+      --navy-dark: #122a47;
+      --gold:      #c9923a;
+      --bg:        #f7f4ef;
+      --surface:   #ffffff;
+      --text:      #1f1f1f;
+      --muted:     #777;
+      --border:    #e0dbd3;
+      --hover:     #fdf6ec;
+      --sp-bg:     #ffffff;
+      --toggle-off:#ccc;
+
+      --fs-scale: 1;
+    }
+
+    /* ── Tokens (dark) ── */
+    [data-theme="dark"] {
+      --bg:       #111111;
+      --surface:  #1c1c1e;
+      --text:     #e2ddd8;
+      --muted:    #888;
+      --border:   #2e2e2e;
+      --hover:    #252320;
+      --sp-bg:    #1c1c1e;
+      --toggle-off:#444;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Smooth theme transitions (exclude animations) */
+    body, header, .nav-bar, select, .btn, .bible-panel, .panel-head,
+    .verses-wrap, .verse, .vtxt, footer, .sp-overlay, .sp-panel,
+    .sp-row, .sp-section, input, .icon-btn {
+      transition: background-color 0.25s, color 0.25s, border-color 0.25s;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+      color: white;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.28);
+    }
+
+    [data-theme="dark"] header {
+      background: linear-gradient(135deg, #0d1e35 0%, #1a3254 100%);
+    }
+
+    .logo-title { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.03em; }
+    .logo-sub   { font-size: 0.68rem; color: rgba(255,255,255,0.5); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+    #headerRef  { font-size: 0.9rem; font-weight: 500; color: rgba(255,255,255,0.8); }
+
+    .header-right { display: flex; align-items: center; gap: 0.75rem; }
+
+    .icon-btn {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      padding: 0.45rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s !important;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── Nav bar ── */
+    .nav-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 60px;
+      z-index: 299;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .sel-wrap { position: relative; display: inline-flex; }
+    .sel-wrap::after {
+      content: '';
+      position: absolute;
+      right: 0.6rem; top: 50%;
+      transform: translateY(-60%);
+      border: 5px solid transparent;
+      border-top-color: #888;
+      pointer-events: none;
+    }
+
+    select {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.87rem; font-weight: 500;
+      padding: 0.42rem 2rem 0.42rem 0.75rem;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer; outline: none; appearance: none;
+    }
+    select:focus { border-color: var(--navy); }
+    #bookSelect    { min-width: 148px; }
+    #chapterSelect { min-width: 76px; }
+    #transSelect   { min-width: 90px; }
+
+    .btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.87rem; font-weight: 500;
+      padding: 0.42rem 0.9rem;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--navy);
+      cursor: pointer; outline: none;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); color: white; }
+    .btn:disabled { opacity: 0.32; cursor: default; }
+
+    [data-theme="dark"] .btn { color: #8ab4d8; }
+    [data-theme="dark"] .btn:hover:not(:disabled) { background: #2a4a70; border-color: #2a4a70; color: white; }
+
+    .nav-label { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+    .nav-spacer { flex: 1; }
+
+    /* ── Main ── */
+    main { flex: 1; max-width: 1440px; width: 100%; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+    .parallel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    /* ── Bible Panel ── */
+    .bible-panel {
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    .panel-head {
+      background: var(--navy);
+      color: white;
+      padding: 0.8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    [data-theme="dark"] .panel-head { background: #1a3254; }
+
+    .panel-name { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; line-height: 1.2; }
+    .panel-name.tamil { font-family: 'Noto Serif Tamil', serif; }
+    .panel-ref  { font-size: 0.72rem; color: rgba(255,255,255,0.58); margin-top: 3px; }
+    .panel-badge {
+      font-size: 0.66rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+      background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 20px; flex-shrink: 0;
+    }
+
+    /* ── Verses ── */
+    .verses-wrap { padding: 1rem 1.15rem 1.5rem; }
+
+    .section-head {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--navy); letter-spacing: 0.04em; text-transform: uppercase;
+      margin: 1rem 0 0.4rem 0.45rem; opacity: 0.7;
+    }
+    .section-head.tamil {
+      font-family: 'Noto Serif Tamil', serif;
+      text-transform: none;
+      font-size: calc(0.8rem * var(--fs-scale));
+    }
+    [data-theme="dark"] .section-head { color: #8ab4d8; }
+
+    .verse {
+      display: flex; gap: 0.6rem;
+      padding: 0.3rem 0.45rem;
+      border-radius: 5px; margin-bottom: 0.05rem;
+    }
+    .verse:hover { background: var(--hover); }
+
+    .vnum {
+      font-family: 'Inter', sans-serif;
+      color: var(--gold); font-size: 0.68rem; font-weight: 700;
+      min-width: 1.4rem; text-align: right; padding-top: 5px;
+      flex-shrink: 0; user-select: none;
+    }
+
+    .vtxt {
+      font-family: 'Crimson Text', serif;
+      font-size: calc(1.12rem * var(--fs-scale));
+      line-height: 1.78; flex: 1;
+    }
+    .vtxt.tamil {
+      font-family: 'Noto Serif Tamil', serif;
+      font-size: calc(1.05rem * var(--fs-scale));
+      line-height: 2;
+    }
+
+    /* ── States ── */
+    .state-box {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 2rem; gap: 1rem;
+      color: var(--muted); font-size: 0.88rem;
+    }
+
+    .spinner {
+      width: 30px; height: 30px;
+      border: 3px solid var(--border);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      transition: none !important;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err { color: #c44; text-align: center; line-height: 1.6; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 1.25rem; color: #aaa;
+      font-size: 0.7rem; line-height: 1.9;
+      border-top: 1px solid var(--border);
+      background: var(--surface); margin-top: 1.25rem;
+    }
+    footer a { color: #bbb; }
+
+    /* ── Settings Overlay ── */
+    .sp-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 498;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s !important;
+    }
+    .sp-overlay.open { opacity: 1; pointer-events: auto; }
+
+    /* ── Settings Panel ── */
+    .sp-panel {
+      position: fixed; right: 0; top: 0;
+      height: 100dvh; width: 310px;
+      background: var(--sp-bg);
+      border-left: 1px solid var(--border);
+      box-shadow: -6px 0 28px rgba(0,0,0,0.18);
+      z-index: 499;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(.4,0,.2,1) !important;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sp-panel.open { transform: translateX(0); }
+
+    .sp-head {
+      background: var(--navy);
+      color: white;
+      padding: 1rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    [data-theme="dark"] .sp-head { background: #1a3254; }
+    .sp-head h2 { font-size: 1rem; font-weight: 600; }
+    .sp-close {
+      background: rgba(255,255,255,0.15);
+      border: none; border-radius: 6px;
+      color: white; cursor: pointer;
+      width: 28px; height: 28px;
+      font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s !important;
+    }
+    .sp-close:hover { background: rgba(255,255,255,0.3); }
+
+    .sp-body {
+      flex: 1; overflow-y: auto;
+      padding: 1rem 1.25rem 2rem;
+      display: flex; flex-direction: column; gap: 0.25rem;
+    }
+
+    .sp-section {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-top: 0.75rem;
+    }
+
+    .sp-section-title {
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 0.5rem 1rem 0.3rem;
+    }
+
+    .sp-row {
+      display: flex; align-items: center;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      gap: 0.75rem;
+    }
+    .sp-row + .sp-row { border-top: 1px solid var(--border); }
+
+    .sp-row-label { font-size: 0.88rem; font-weight: 500; flex: 1; }
+    .sp-row-hint  { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative; display: inline-block;
+      width: 44px; height: 24px; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: var(--toggle-off);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s !important;
+    }
+    .toggle-track::before {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s !important;
+    }
+    .toggle input:checked + .toggle-track { background: var(--navy); }
+    .toggle input:checked + .toggle-track::before { transform: translateX(20px); }
+    [data-theme="dark"] .toggle input:checked + .toggle-track { background: #4a90d8; }
+
+    /* Font size controls */
+    .fs-controls {
+      display: flex; align-items: center;
+      gap: 0.5rem; flex-shrink: 0;
+    }
+    .fs-btn {
+      font-family: 'Inter', sans-serif;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.85rem; font-weight: 600;
+    }
+    .fs-btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); color: white; }
+    .fs-btn:disabled { opacity: 0.3; cursor: default; }
+    .fs-label { font-size: 0.78rem; color: var(--muted); min-width: 3.5rem; text-align: center; }
+
+    /* API key input */
+    .sp-input-wrap { padding: 0 1rem 0.75rem; background: var(--surface); }
+    .sp-input-wrap input {
+      width: 100%;
+      font-family: 'Inter', monospace;
+      font-size: 0.78rem;
+      padding: 0.5rem 0.75rem;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+    }
+    .sp-input-wrap input:focus { border-color: var(--navy); }
+    .sp-key-status { font-size: 0.75rem; margin-top: 0.4rem; padding-bottom: 0.25rem; }
+    .sp-key-status.ok  { color: #3a9c5e; }
+    .sp-key-status.err { color: #c44; }
+
+    .sp-link {
+      font-size: 0.75rem; color: var(--navy);
+      padding: 0.5rem 1rem 0.75rem;
+      display: block; background: var(--surface);
+      border-top: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sp-link:hover { text-decoration: underline; }
+    [data-theme="dark"] .sp-link { color: #8ab4d8; }
+
+    /* ── Responsive ── */
+    @media (max-width: 820px) {
+      .parallel-grid { grid-template-columns: 1fr; }
+      .nav-bar { top: 58px; padding: 0.55rem 1rem; }
+      main { padding: 0.9rem 1rem; }
+      .nav-label { display: none; }
+      .sp-panel { width: 290px; }
+    }
+    @media (max-width: 480px) {
+      header { padding: 0.7rem 1rem; }
+      .logo-title { font-size: 1rem; }
+      #headerRef { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Settings overlay (click-outside to close) -->
+<div class="sp-overlay" id="spOverlay" onclick="closeSettings()"></div>
+
+<!-- Settings panel -->
+<aside class="sp-panel" id="spPanel" role="dialog" aria-label="Settings">
+  <div class="sp-head">
+    <h2>Settings</h2>
+    <button class="sp-close" onclick="closeSettings()" aria-label="Close">✕</button>
+  </div>
+  <div class="sp-body">
+
+    <!-- Appearance -->
+    <div class="sp-section">
+      <div class="sp-section-title">Appearance</div>
+      <div class="sp-row">
+        <div>
+          <div class="sp-row-label">Night Mode</div>
+        </div>
+        <label class="toggle" aria-label="Toggle dark mode">
+          <input type="checkbox" id="darkToggle" onchange="applyDarkMode()">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Font size -->
+    <div class="sp-section">
+      <div class="sp-section-title">Text Size</div>
+      <div class="sp-row">
+        <div class="sp-row-label">Font Size</div>
+        <div class="fs-controls">
+          <button class="fs-btn" id="fsDec" onclick="changeFontSize(-1)" aria-label="Smaller">A−</button>
+          <span class="fs-label" id="fsLabel">Medium</span>
+          <button class="fs-btn" id="fsInc" onclick="changeFontSize(1)" aria-label="Larger">A+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NKJV via API.Bible -->
+    <div class="sp-section">
+      <div class="sp-section-title">NKJV — API.Bible Key</div>
+      <div class="sp-row" style="flex-direction:column; align-items:flex-start; gap:0.3rem;">
+        <div class="sp-row-label">Enter your API key to unlock NKJV</div>
+        <div class="sp-row-hint">Free tier: 5,000 calls/day at scripture.api.bible</div>
+      </div>
+      <div class="sp-input-wrap">
+        <input type="text" id="apiKeyInput" placeholder="Paste API key here…"
+               autocomplete="off" spellcheck="false" oninput="onApiKeyInput()">
+        <div class="sp-key-status" id="apiKeyStatus"></div>
+      </div>
+      <a class="sp-link" href="https://scripture.api.bible" target="_blank">
+        🔗 Get a free key at scripture.api.bible →
+      </a>
+    </div>
+
+  </div>
+</aside>
+
+<!-- App header -->
+<header>
+  <div>
+    <div class="logo-title">Parallel Bible</div>
+    <div class="logo-sub">English · Tamil</div>
+  </div>
+  <div class="header-right">
+    <span id="headerRef">John 3</span>
+    <button class="icon-btn" onclick="openSettings()" aria-label="Open settings">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- Navigation bar -->
+<nav class="nav-bar">
+  <div class="sel-wrap"><select id="bookSelect" aria-label="Book"></select></div>
+  <div class="sel-wrap"><select id="chapterSelect" aria-label="Chapter"></select></div>
+  <button class="btn" id="prevBtn" onclick="prevChapter()">‹ Prev</button>
+  <button class="btn" id="nextBtn" onclick="nextChapter()">Next ›</button>
+  <div class="nav-spacer"></div>
+  <span class="nav-label">English:</span>
+  <div class="sel-wrap">
+    <select id="transSelect" aria-label="English translation" onchange="loadChapter()">
+      <option value="kjv">KJV</option>
+      <option value="web">WEB</option>
+    </select>
+  </div>
+</nav>
+
+<main>
+  <div class="parallel-grid">
+
+    <div class="bible-panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-name" id="engLabel">KJV</div>
+          <div class="panel-ref"  id="engRef">John 3</div>
+        </div>
+        <span class="panel-badge">English</span>
+      </div>
+      <div id="engContent">
+        <div class="state-box"><div class="spinner"></div><span>Loading…</span></div>
+      </div>
+    </div>
+
+    <div class="bible-panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-name tamil">தமிழ் வேதாகமம்</div>
+          <div class="panel-ref" id="tamRef">John 3</div>
+        </div>
+        <span class="panel-badge">Tamil</span>
+      </div>
+      <div id="tamContent">
+        <div class="state-box"><div class="spinner"></div><span>Loading…</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  English: King James Version / World English Bible / NKJV via API.Bible &nbsp;·&nbsp; Tamil: IRV (இண்டியன் ரிவைஸ்டு வெர்ஸன்)<br>
+  <em>NKJV requires a free API.Bible key — enter it in ⚙ Settings.</em><br>
+  English via <a href="https://bible-api.com" target="_blank">bible-api.com</a> &amp; <a href="https://scripture.api.bible" target="_blank">API.Bible</a>
+  &nbsp;·&nbsp;
+  Tamil via <a href="https://bible.helloao.org" target="_blank">bible.helloao.org</a>
+</footer>
+
+<script>
+"use strict";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Book data
+// ─────────────────────────────────────────────────────────────────────────────
+const BOOKS = [
+  {n:"Genesis",         a:"genesis",         u:"GEN", ch:50,  ot:true},
+  {n:"Exodus",          a:"exodus",          u:"EXO", ch:40,  ot:true},
+  {n:"Leviticus",       a:"leviticus",       u:"LEV", ch:27,  ot:true},
+  {n:"Numbers",         a:"numbers",         u:"NUM", ch:36,  ot:true},
+  {n:"Deuteronomy",     a:"deuteronomy",     u:"DEU", ch:34,  ot:true},
+  {n:"Joshua",          a:"joshua",          u:"JOS", ch:24,  ot:true},
+  {n:"Judges",          a:"judges",          u:"JDG", ch:21,  ot:true},
+  {n:"Ruth",            a:"ruth",            u:"RUT", ch:4,   ot:true},
+  {n:"1 Samuel",        a:"1+samuel",        u:"1SA", ch:31,  ot:true},
+  {n:"2 Samuel",        a:"2+samuel",        u:"2SA", ch:24,  ot:true},
+  {n:"1 Kings",         a:"1+kings",         u:"1KI", ch:22,  ot:true},
+  {n:"2 Kings",         a:"2+kings",         u:"2KI", ch:25,  ot:true},
+  {n:"1 Chronicles",    a:"1+chronicles",    u:"1CH", ch:29,  ot:true},
+  {n:"2 Chronicles",    a:"2+chronicles",    u:"2CH", ch:36,  ot:true},
+  {n:"Ezra",            a:"ezra",            u:"EZR", ch:10,  ot:true},
+  {n:"Nehemiah",        a:"nehemiah",        u:"NEH", ch:13,  ot:true},
+  {n:"Esther",          a:"esther",          u:"EST", ch:10,  ot:true},
+  {n:"Job",             a:"job",             u:"JOB", ch:42,  ot:true},
+  {n:"Psalms",          a:"psalms",          u:"PSA", ch:150, ot:true},
+  {n:"Proverbs",        a:"proverbs",        u:"PRO", ch:31,  ot:true},
+  {n:"Ecclesiastes",    a:"ecclesiastes",    u:"ECC", ch:12,  ot:true},
+  {n:"Song of Solomon", a:"song+of+solomon", u:"SNG", ch:8,   ot:true},
+  {n:"Isaiah",          a:"isaiah",          u:"ISA", ch:66,  ot:true},
+  {n:"Jeremiah",        a:"jeremiah",        u:"JER", ch:52,  ot:true},
+  {n:"Lamentations",    a:"lamentations",    u:"LAM", ch:5,   ot:true},
+  {n:"Ezekiel",         a:"ezekiel",         u:"EZK", ch:48,  ot:true},
+  {n:"Daniel",          a:"daniel",          u:"DAN", ch:12,  ot:true},
+  {n:"Hosea",           a:"hosea",           u:"HOS", ch:14,  ot:true},
+  {n:"Joel",            a:"joel",            u:"JOL", ch:3,   ot:true},
+  {n:"Amos",            a:"amos",            u:"AMO", ch:9,   ot:true},
+  {n:"Obadiah",         a:"obadiah",         u:"OBA", ch:1,   ot:true},
+  {n:"Jonah",           a:"jonah",           u:"JON", ch:4,   ot:true},
+  {n:"Micah",           a:"micah",           u:"MIC", ch:7,   ot:true},
+  {n:"Nahum",           a:"nahum",           u:"NAH", ch:3,   ot:true},
+  {n:"Habakkuk",        a:"habakkuk",        u:"HAB", ch:3,   ot:true},
+  {n:"Zephaniah",       a:"zephaniah",       u:"ZEP", ch:3,   ot:true},
+  {n:"Haggai",          a:"haggai",          u:"HAG", ch:2,   ot:true},
+  {n:"Zechariah",       a:"zechariah",       u:"ZEC", ch:14,  ot:true},
+  {n:"Malachi",         a:"malachi",         u:"MAL", ch:4,   ot:true},
+  {n:"Matthew",         a:"matthew",         u:"MAT", ch:28,  ot:false},
+  {n:"Mark",            a:"mark",            u:"MRK", ch:16,  ot:false},
+  {n:"Luke",            a:"luke",            u:"LUK", ch:24,  ot:false},
+  {n:"John",            a:"john",            u:"JHN", ch:21,  ot:false},
+  {n:"Acts",            a:"acts",            u:"ACT", ch:28,  ot:false},
+  {n:"Romans",          a:"romans",          u:"ROM", ch:16,  ot:false},
+  {n:"1 Corinthians",   a:"1+corinthians",   u:"1CO", ch:16,  ot:false},
+  {n:"2 Corinthians",   a:"2+corinthians",   u:"2CO", ch:13,  ot:false},
+  {n:"Galatians",       a:"galatians",       u:"GAL", ch:6,   ot:false},
+  {n:"Ephesians",       a:"ephesians",       u:"EPH", ch:6,   ot:false},
+  {n:"Philippians",     a:"philippians",     u:"PHP", ch:4,   ot:false},
+  {n:"Colossians",      a:"colossians",      u:"COL", ch:4,   ot:false},
+  {n:"1 Thessalonians", a:"1+thessalonians", u:"1TH", ch:5,   ot:false},
+  {n:"2 Thessalonians", a:"2+thessalonians", u:"2TH", ch:3,   ot:false},
+  {n:"1 Timothy",       a:"1+timothy",       u:"1TI", ch:6,   ot:false},
+  {n:"2 Timothy",       a:"2+timothy",       u:"2TI", ch:4,   ot:false},
+  {n:"Titus",           a:"titus",           u:"TIT", ch:3,   ot:false},
+  {n:"Philemon",        a:"philemon",        u:"PHM", ch:1,   ot:false},
+  {n:"Hebrews",         a:"hebrews",         u:"HEB", ch:13,  ot:false},
+  {n:"James",           a:"james",           u:"JAS", ch:5,   ot:false},
+  {n:"1 Peter",         a:"1+peter",         u:"1PE", ch:5,   ot:false},
+  {n:"2 Peter",         a:"2+peter",         u:"2PE", ch:3,   ot:false},
+  {n:"1 John",          a:"1+john",          u:"1JN", ch:5,   ot:false},
+  {n:"2 John",          a:"2+john",          u:"2JN", ch:1,   ot:false},
+  {n:"3 John",          a:"3+john",          u:"3JN", ch:1,   ot:false},
+  {n:"Jude",            a:"jude",            u:"JUD", ch:1,   ot:false},
+  {n:"Revelation",      a:"revelation",      u:"REV", ch:22,  ot:false},
+];
+
+const NKJV_BIBLE_ID = 'de4e12af7f28f599-02';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Navigation state
+// ─────────────────────────────────────────────────────────────────────────────
+let bookIdx = 42; // John
+let chapter  = 3;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Settings
+// ─────────────────────────────────────────────────────────────────────────────
+const FONT_SCALES = [0.82, 0.92, 1.0, 1.15, 1.32];
+const FONT_LABELS = ['X-Small', 'Small', 'Medium', 'Large', 'X-Large'];
+
+let darkMode  = localStorage.getItem('darkMode') === 'true';
+let fontStep  = parseInt(localStorage.getItem('fontStep') ?? '2'); // default Medium
+let apiKey    = localStorage.getItem('apiBibleKey') || '';
+
+function initSettings() {
+  // Dark mode
+  document.getElementById('darkToggle').checked = darkMode;
+  applyDarkMode(false);
+
+  // Font size
+  applyFontSize();
+
+  // API key
+  const inp = document.getElementById('apiKeyInput');
+  inp.value = apiKey;
+  if (apiKey) {
+    syncNkjvOption(true);
+    document.getElementById('apiKeyStatus').textContent = '✓ NKJV unlocked';
+    document.getElementById('apiKeyStatus').className = 'sp-key-status ok';
+  }
+}
+
+function applyDarkMode(save = true) {
+  darkMode = document.getElementById('darkToggle').checked;
+  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  if (save) localStorage.setItem('darkMode', darkMode);
+}
+
+function applyFontSize() {
+  document.documentElement.style.setProperty('--fs-scale', FONT_SCALES[fontStep]);
+  document.getElementById('fsLabel').textContent = FONT_LABELS[fontStep];
+  document.getElementById('fsDec').disabled = fontStep === 0;
+  document.getElementById('fsInc').disabled = fontStep === FONT_SCALES.length - 1;
+}
+
+function changeFontSize(delta) {
+  fontStep = Math.max(0, Math.min(FONT_SCALES.length - 1, fontStep + delta));
+  localStorage.setItem('fontStep', fontStep);
+  applyFontSize();
+}
+
+function onApiKeyInput() {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('apiBibleKey', apiKey);
+  const statusEl = document.getElementById('apiKeyStatus');
+  if (apiKey.length > 10) {
+    syncNkjvOption(true);
+    statusEl.textContent = '✓ NKJV enabled — reload chapter to use';
+    statusEl.className = 'sp-key-status ok';
+  } else {
+    syncNkjvOption(false);
+    statusEl.textContent = '';
+  }
+}
+
+function syncNkjvOption(add) {
+  const sel = document.getElementById('transSelect');
+  const existing = sel.querySelector('option[value="nkjv"]');
+  if (add && !existing) {
+    const opt = document.createElement('option');
+    opt.value = 'nkjv'; opt.textContent = 'NKJV';
+    sel.insertBefore(opt, sel.firstChild);
+    sel.value = 'nkjv';
+    loadChapter();
+  } else if (!add && existing) {
+    existing.remove();
+    if (sel.value === 'nkjv') { sel.value = 'kjv'; loadChapter(); }
+  }
+}
+
+// Settings panel open/close
+function openSettings() {
+  document.getElementById('spPanel').classList.add('open');
+  document.getElementById('spOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSettings() {
+  document.getElementById('spPanel').classList.remove('open');
+  document.getElementById('spOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Book / chapter selectors
+// ─────────────────────────────────────────────────────────────────────────────
+function buildBookSelect() {
+  const sel = document.getElementById('bookSelect');
+  const ot = document.createElement('optgroup'); ot.label = '— Old Testament —';
+  const nt = document.createElement('optgroup'); nt.label = '— New Testament —';
+  BOOKS.forEach((b, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = b.n;
+    (b.ot ? ot : nt).appendChild(o);
+  });
+  sel.appendChild(ot); sel.appendChild(nt);
+  sel.value = bookIdx;
+  sel.addEventListener('change', () => {
+    bookIdx = +sel.value; chapter = 1;
+    rebuildChapterSelect(); loadChapter();
+  });
+}
+
+function rebuildChapterSelect() {
+  const sel = document.getElementById('chapterSelect');
+  sel.innerHTML = '';
+  for (let i = 1; i <= BOOKS[bookIdx].ch; i++) {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = `Ch. ${i}`; sel.appendChild(o);
+  }
+  sel.value = chapter;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Navigation
+// ─────────────────────────────────────────────────────────────────────────────
+function prevChapter() {
+  if (chapter > 1) { chapter--; }
+  else if (bookIdx > 0) { bookIdx--; chapter = BOOKS[bookIdx].ch; document.getElementById('bookSelect').value = bookIdx; }
+  rebuildChapterSelect(); loadChapter();
+}
+
+function nextChapter() {
+  if (chapter < BOOKS[bookIdx].ch) { chapter++; }
+  else if (bookIdx < BOOKS.length - 1) { bookIdx++; chapter = 1; document.getElementById('bookSelect').value = bookIdx; }
+  rebuildChapterSelect(); loadChapter();
+}
+
+function syncNav() {
+  document.getElementById('prevBtn').disabled = bookIdx === 0 && chapter === 1;
+  document.getElementById('nextBtn').disabled = bookIdx === BOOKS.length - 1 && chapter === BOOKS[bookIdx].ch;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fetch helpers
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchEnglish(book, ch, trans) {
+  if (trans === 'nkjv') return fetchNKJV(book.u, ch);
+  const r = await fetch(`https://bible-api.com/${book.a}+${ch}?translation=${trans}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function fetchNKJV(usfm, ch) {
+  if (!apiKey) throw new Error('No API key set — enter one in ⚙ Settings');
+  const chId = `${usfm}.${ch}`;
+  const url = `https://api.scripture.api.bible/v1/bibles/${NKJV_BIBLE_ID}/chapters/${chId}`
+    + `?content-type=json&include-notes=false&include-titles=false`
+    + `&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false`;
+  const r = await fetch(url, { headers: { 'api-key': apiKey } });
+  if (r.status === 401) throw new Error('Invalid API key');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const json = await r.json();
+  return { verses: parseApiBibleJSON(json.data?.content ?? []) };
+}
+
+function parseApiBibleJSON(blocks) {
+  const verses = [];
+  let curNum = null, curText = [];
+
+  function walk(items) {
+    for (const item of items ?? []) {
+      if (item.type === 'tag') {
+        const isVerseStart = item.name === 'verse-start' || item.name === 'v';
+        const isVerseEnd   = item.name === 'verse-end';
+        if (isVerseStart) {
+          if (curNum !== null) verses.push({ verse: curNum, text: curText.join('').trim() });
+          curNum = parseInt(item.attrs?.number ?? item.number ?? curNum + 1);
+          curText = [];
+        } else if (isVerseEnd) {
+          // end marker — flush handled by next verse-start or end of chapter
+        } else {
+          walk(item.items);
+        }
+      } else if (item.type === 'text' && curNum !== null) {
+        curText.push(item.text ?? '');
+      }
+    }
+  }
+
+  for (const block of blocks) { walk(block.items ?? []); }
+  if (curNum !== null && curText.join('').trim()) {
+    verses.push({ verse: curNum, text: curText.join('').trim() });
+  }
+  return verses.sort((a, b) => a.verse - b.verse);
+}
+
+async function fetchTamil(usfm, ch) {
+  const r = await fetch(`https://bible.helloao.org/api/tam_irv/${usfm}/${ch}.json`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const loadingHTML = () =>
+  `<div class="state-box"><div class="spinner"></div><span>Loading…</span></div>`;
+
+const errorHTML = msg =>
+  `<div class="state-box"><span class="err">⚠ ${esc(msg)}</span></div>`;
+
+function renderEnglish(result) {
+  if (result.status === 'rejected')
+    return errorHTML(`Could not load English — ${result.reason.message}`);
+  const verses = (result.value.verses || []).map(v => ({ num: v.verse, text: v.text.trim() }));
+  if (!verses.length) return errorHTML('No verses found.');
+  return '<div class="verses-wrap">' + verses.map(v =>
+    `<div class="verse"><span class="vnum">${v.num}</span><span class="vtxt">${esc(v.text)}</span></div>`
+  ).join('') + '</div>';
+}
+
+function extractText(items) {
+  return (items || []).map(x => typeof x === 'string' ? x : (x?.text ?? '')).join(' ').trim();
+}
+
+function renderTamil(result) {
+  if (result.status === 'rejected')
+    return errorHTML(`Could not load Tamil — ${result.reason.message}`);
+  const content = result.value?.chapter?.content ?? [];
+  if (!content.length) return errorHTML('No verses found.');
+
+  let html = '<div class="verses-wrap">';
+  for (const item of content) {
+    if (item.type === 'heading') {
+      const t = extractText(item.content);
+      if (t) html += `<div class="section-head tamil">${esc(t)}</div>`;
+    } else if (item.type === 'verse') {
+      html += `<div class="verse"><span class="vnum">${item.number}</span><span class="vtxt tamil">${esc(extractText(item.content))}</span></div>`;
+    }
+  }
+  return html + '</div>';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Load chapter
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadChapter() {
+  chapter = +(document.getElementById('chapterSelect').value || chapter);
+  const book  = BOOKS[bookIdx];
+  const trans = document.getElementById('transSelect').value;
+  const ref   = `${book.n} ${chapter}`;
+
+  document.getElementById('headerRef').textContent = ref;
+  document.getElementById('engLabel').textContent  = trans.toUpperCase();
+  document.getElementById('engRef').textContent    = ref;
+  document.getElementById('tamRef').textContent    = ref;
+  document.getElementById('engContent').innerHTML  = loadingHTML();
+  document.getElementById('tamContent').innerHTML  = loadingHTML();
+  syncNav();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const [eng, tam] = await Promise.allSettled([
+    fetchEnglish(book, chapter, trans),
+    fetchTamil(book.u, chapter),
+  ]);
+
+  document.getElementById('engContent').innerHTML = renderEnglish(eng);
+  document.getElementById('tamContent').innerHTML = renderTamil(tam);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('chapterSelect').addEventListener('change', () => {
+  chapter = +document.getElementById('chapterSelect').value;
+  loadChapter();
+});
+
+initSettings();
+buildBookSelect();
+rebuildChapterSelect();
+loadChapter();
+</script>
+</body>
+</html>
