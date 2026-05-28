@@ -384,6 +384,25 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .err { color: #c44; text-align: center; line-height: 1.6; }
 
+    /* Brightness filter — applied to content only, not the settings panel */
+    main, .sticky-shell { filter: brightness(var(--brightness, 1)); transition: filter 0.15s; }
+
+    /* Range slider */
+    .brightness-row { flex-direction: column; align-items: flex-start !important; gap: 0.5rem !important; }
+    .brightness-wrap { display: flex; align-items: center; gap: 0.65rem; width: 100%; }
+    .brightness-wrap input[type=range] {
+      flex: 1; height: 4px; accent-color: var(--navy);
+      cursor: pointer; -webkit-appearance: none; appearance: none;
+      background: var(--border); border-radius: 4px; outline: none;
+    }
+    .brightness-wrap input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--navy); cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    }
+    [data-theme="dark"] .brightness-wrap input[type=range]::-webkit-slider-thumb { background: #4a90d8; }
+    .brightness-val { font-size: 0.78rem; color: var(--muted); min-width: 2.8rem; text-align: right; }
+
     /* ── Footer ── */
     footer {
       text-align: center; padding: 1.25rem; color: #aaa;
@@ -668,6 +687,16 @@
           <span class="toggle-track"></span>
         </label>
       </div>
+      <div class="sp-row brightness-row">
+        <div class="sp-row-label">Brightness</div>
+        <div class="brightness-wrap">
+          <span style="font-size:0.8rem">🌑</span>
+          <input type="range" id="brightnessSlider" min="0.3" max="1.5" step="0.05"
+                 value="1" oninput="changeBrightness(this.value)" aria-label="Brightness">
+          <span style="font-size:0.8rem">☀️</span>
+          <span class="brightness-val" id="brightnessVal">100%</span>
+        </div>
+      </div>
     </div>
 
     <!-- Font size -->
@@ -893,6 +922,7 @@ const FONT_SCALES = [0.82, 0.92, 1.0, 1.15, 1.32, 1.55, 1.8];
 const FONT_LABELS = ['X-Small', 'Small', 'Medium', 'Large', 'X-Large', '2X-Large', '3X-Large'];
 
 let darkMode    = localStorage.getItem('darkMode') === 'true';
+let brightness  = parseFloat(localStorage.getItem('brightness') || '1');
 let fontStep    = parseInt(localStorage.getItem('fontStep') ?? '2');
 let fontStepEng = parseInt(localStorage.getItem('fontStepEng') ?? '2');
 let fontStepTam = parseInt(localStorage.getItem('fontStepTam') ?? '2');
@@ -908,6 +938,9 @@ function initSettings() {
   // Dark mode
   document.getElementById('darkToggle').checked = darkMode;
   applyDarkMode(false);
+
+  // Brightness
+  applyBrightness();
 
   // Font size
   applyFontSize();
@@ -933,6 +966,20 @@ function initSettings() {
     document.getElementById('apiKeyStatus').textContent = '✓ Using your personal API key';
     document.getElementById('apiKeyStatus').className = 'sp-key-status ok';
   }
+}
+
+function applyBrightness() {
+  document.documentElement.style.setProperty('--brightness', brightness);
+  const pct = Math.round(brightness * 100) + '%';
+  const lbl = document.getElementById('brightnessVal');
+  const sld = document.getElementById('brightnessSlider');
+  if (lbl) lbl.textContent = pct;
+  if (sld) sld.value = brightness;
+}
+function changeBrightness(val) {
+  brightness = parseFloat(val);
+  localStorage.setItem('brightness', brightness);
+  applyBrightness();
 }
 
 function applyDarkMode(save = true) {
