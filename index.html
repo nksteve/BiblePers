@@ -266,6 +266,32 @@
     .panel-fs-btn:hover { background: rgba(255,255,255,0.25); }
     .panel-fs-btn:disabled { opacity: 0.3; cursor: default; }
 
+    /* Translation selector inside panel header */
+    .panel-sel-wrap { position: relative; flex-shrink: 0; }
+    .panel-sel-wrap::after {
+      content: '';
+      position: absolute; right: 0.32rem; top: 50%;
+      transform: translateY(-60%);
+      border: 4px solid transparent;
+      border-top-color: rgba(255,255,255,0.6);
+      pointer-events: none;
+    }
+    .panel-sel {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em;
+      background: rgba(255,255,255,0.13);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 5px;
+      color: white;
+      padding: 0.18rem 1.25rem 0.18rem 0.42rem;
+      cursor: pointer; outline: none; appearance: none;
+      transition: background 0.15s;
+    }
+    .panel-sel:hover, .panel-sel:focus { background: rgba(255,255,255,0.24); }
+    /* Compact in split mode */
+    .parallel-grid.split .panel-sel { font-size: 0.58rem; padding: 0.1rem 1rem 0.1rem 0.3rem; }
+    .parallel-grid.split .panel-sel-wrap::after { border-width: 3px; right: 0.2rem; }
+
     /* ── States ── */
     .state-box {
       display: flex; flex-direction: column;
@@ -604,22 +630,8 @@
   <button class="btn" id="prevBtn" onclick="prevChapter()">‹ Prev</button>
   <button class="btn" id="nextBtn" onclick="nextChapter()">Next ›</button>
   <button class="layout-btn" id="splitBtn" onclick="toggleSplit()" title="Toggle split view">⧉ Split</button>
+  <button class="layout-btn" id="swapBtn" onclick="swapPanels()" title="Swap panel sides">⇄</button>
   <div class="nav-spacer"></div>
-  <span class="nav-label">English:</span>
-  <div class="sel-wrap">
-    <select id="transSelect" aria-label="English translation" onchange="loadChapter()">
-      <option value="nkjv">NKJV</option>
-      <option value="kjv">KJV</option>
-      <option value="web">WEB</option>
-    </select>
-  </div>
-  <span class="nav-label">Tamil:</span>
-  <div class="sel-wrap">
-    <select id="tamTransSelect" aria-label="Tamil translation" onchange="onTamTransChange()">
-      <option value="irv">IRV</option>
-      <option value="bsi">O.V. BSI</option>
-    </select>
-  </div>
   <button class="nav-gear-btn" onclick="openSettings()" aria-label="Open settings">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -642,7 +654,12 @@
           <button class="panel-fs-btn" id="tamFsDec" onclick="changeFontSizeTam(-1)" title="Smaller">A−</button>
           <button class="panel-fs-btn" id="tamFsInc" onclick="changeFontSizeTam(1)"  title="Larger">A+</button>
         </div>
-        <span class="panel-badge" id="tamBadge">Tamil IRV</span>
+        <div class="panel-sel-wrap">
+          <select class="panel-sel" id="tamTransSelect" aria-label="Tamil translation" onchange="onTamTransChange()">
+            <option value="irv">IRV</option>
+            <option value="bsi">O.V. BSI</option>
+          </select>
+        </div>
       </div>
       <div id="tamContent">
         <div class="state-box"><div class="spinner"></div><span>Loading…</span></div>
@@ -652,14 +669,20 @@
     <div class="bible-panel">
       <div class="panel-head">
         <div>
-          <div class="panel-name" id="engLabel">KJV</div>
+          <div class="panel-name">English Bible</div>
           <div class="panel-ref"  id="engRef">John 3</div>
         </div>
         <div class="panel-fs-controls">
           <button class="panel-fs-btn" id="engFsDec" onclick="changeFontSizeEng(-1)" title="Smaller">A−</button>
           <button class="panel-fs-btn" id="engFsInc" onclick="changeFontSizeEng(1)"  title="Larger">A+</button>
         </div>
-        <span class="panel-badge">English</span>
+        <div class="panel-sel-wrap">
+          <select class="panel-sel" id="transSelect" aria-label="English translation" onchange="loadChapter()">
+            <option value="nkjv">NKJV</option>
+            <option value="kjv">KJV</option>
+            <option value="web">WEB</option>
+          </select>
+        </div>
       </div>
       <div id="engContent">
         <div class="state-box"><div class="spinner"></div><span>Loading…</span></div>
@@ -775,9 +798,10 @@ let fontStepEng = parseInt(localStorage.getItem('fontStepEng') ?? '2');
 let fontStepTam = parseInt(localStorage.getItem('fontStepTam') ?? '2');
 let apiKey      = localStorage.getItem('apiBibleKey') || '';
 let tamTrans    = localStorage.getItem('tamTrans') || 'irv';
-let splitLayout = localStorage.getItem('splitLayout') === 'true';
-let splitRatio  = parseFloat(localStorage.getItem('splitRatio') || '50');
-let isDragging  = false;
+let splitLayout  = localStorage.getItem('splitLayout') === 'true';
+let splitRatio   = parseFloat(localStorage.getItem('splitRatio') || '50');
+let panelSwapped = localStorage.getItem('panelSwapped') === 'true';
+let isDragging   = false;
 
 function initSettings() {
   // Dark mode
@@ -793,6 +817,9 @@ function initSettings() {
 
   // Split layout
   applySplitLayout();
+
+  // Panel swap
+  applyPanelSwap();
 
   // Tamil translation
   document.getElementById('tamTransSelect').value = tamTrans;
@@ -945,6 +972,41 @@ function addHandleEvents(handle) {
   handle.addEventListener('touchstart',  e => { onStart(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
   document.addEventListener('touchmove', e => { if (isDragging) { onMove(e.touches[0].clientX); e.preventDefault(); } }, { passive: false });
   document.addEventListener('touchend',  () => onEnd());
+}
+
+function swapPanels() {
+  panelSwapped = !panelSwapped;
+  localStorage.setItem('panelSwapped', panelSwapped);
+  applyPanelSwap();
+}
+
+function applyPanelSwap() {
+  const grid    = document.querySelector('.parallel-grid');
+  const tamPanel = document.getElementById('tamContent').closest('.bible-panel');
+  const engPanel = document.getElementById('engContent').closest('.bible-panel');
+  if (!tamPanel || !engPanel) return;
+
+  if (panelSwapped) {
+    grid.insertBefore(engPanel, tamPanel); // English left, Tamil right
+  } else {
+    grid.insertBefore(tamPanel, engPanel); // Tamil left, English right (default)
+  }
+
+  // Re-seat the split handle between the two panels
+  if (splitLayout) {
+    const oldHandle = document.getElementById('splitHandle');
+    if (oldHandle) oldHandle.remove();
+    const newHandle = document.createElement('div');
+    newHandle.id = 'splitHandle';
+    newHandle.className = 'split-handle';
+    const panels = grid.querySelectorAll('.bible-panel');
+    if (panels.length >= 2) grid.insertBefore(newHandle, panels[1]);
+    addHandleEvents(newHandle);
+    applySplitRatio();
+  }
+
+  const btn = document.getElementById('swapBtn');
+  if (btn) btn.classList.toggle('active', panelSwapped);
 }
 
 function onTamTransChange() {
@@ -1142,10 +1204,8 @@ async function loadChapter() {
   const ref   = `${book.n} ${chapter}`;
 
   document.getElementById('headerRef').textContent = ref;
-  document.getElementById('engLabel').textContent  = trans.toUpperCase();
   document.getElementById('engRef').textContent    = ref;
   document.getElementById('tamRef').textContent    = ref;
-  document.getElementById('tamBadge').textContent  = tamTrans === 'bsi' ? 'O.V. BSI' : 'Tamil IRV';
   document.getElementById('engContent').innerHTML  = loadingHTML();
   document.getElementById('tamContent').innerHTML  = loadingHTML();
   syncNav();
