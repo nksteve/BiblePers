@@ -619,51 +619,24 @@
 
     /* ── Independent panel scrolling ── */
 
-    /* Desktop (≥821px): each panel constrained to viewport height, content scrolls */
+    /* Desktop (≥821px): constrain panel height, inner content div scrolls */
     @media (min-width: 821px) {
-      .bible-panel {
-        display: flex; flex-direction: column;
-        max-height: calc(100vh - 148px);
-      }
-      .panel-head { flex-shrink: 0; }
+      .bible-panel { display: flex; flex-direction: column; max-height: calc(100vh - 148px); }
+      .panel-head  { flex-shrink: 0; }
       #engContent, #tamContent { flex: 1; overflow-y: auto; min-height: 0; }
     }
 
-    /* Mobile split: lock viewport then walk the flex chain down to the content divs
-       The chain must be an unbroken flex column:
-         body (flex column, 100vh locked)
-           → sticky-shell (shrink 0)
-           → main (flex:1, flex column, overflow hidden)
-             → .parallel-grid.split (flex:1, min-height:0)
-               → .bible-panel (flex column, min-height:0)
-                 → .panel-head (shrink 0)
-                 → #content (flex:1, overflow-y:auto)  ← scrolls here
-    */
-    body.split-locked {
-      overflow: hidden;
-      height: 100vh;   /* fallback */
-      height: 100dvh;  /* accounts for mobile browser chrome */
-    }
-    body.split-locked main.split-active {
-      display: flex; flex-direction: column;
-      flex: 1; overflow: hidden; min-height: 0;
-      padding: 0 0.15rem;   /* keep side gap, drop vertical padding */
-    }
-    body.split-locked .parallel-grid.split {
-      /* already display:flex in the media query */
-      flex: 1; min-height: 0; overflow: hidden;
-    }
-    body.split-locked .parallel-grid.split .bible-panel {
-      display: flex; flex-direction: column;
-      min-height: 0; overflow: hidden;
-    }
-    body.split-locked .parallel-grid.split .panel-head { flex-shrink: 0; }
-    body.split-locked .parallel-grid.split #engContent,
-    body.split-locked .parallel-grid.split #tamContent {
-      flex: 1; min-height: 0;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+    /* Mobile split: give each content div an explicit height so it can scroll.
+       No body-locking needed — just a direct calc() height.
+       Overhead: nav bar ≈ 45px  + panel head (compact) ≈ 42px + padding ≈ 10px ≈ 100px */
+    @media (max-width: 820px) {
+      .parallel-grid.split #engContent,
+      .parallel-grid.split #tamContent {
+        height: calc(100svh - 100px); /* svh = small stable viewport (no browser chrome) */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+      }
     }
   </style>
 </head>
@@ -1055,7 +1028,6 @@ function applySplitLayout() {
   grid.classList.toggle('split', splitLayout);
   main.classList.toggle('split-active', splitLayout);
   btn.classList.toggle('active', splitLayout);
-  document.body.classList.toggle('split-locked', splitLayout);
 
   let handle = document.getElementById('splitHandle');
   if (splitLayout) {
