@@ -626,17 +626,20 @@
       #engContent, #tamContent { flex: 1; overflow-y: auto; min-height: 0; }
     }
 
-    /* Mobile split: give each content div an explicit height so it can scroll.
-       No body-locking needed — just a direct calc() height.
-       Overhead: nav bar ≈ 45px  + panel head (compact) ≈ 42px + padding ≈ 10px ≈ 100px */
+    /* Mobile split: explicit height so each panel can scroll independently.
+       svh = small-viewport height (excludes browser chrome bar).
+       Overhead ≈ nav bar 45px + compact panel-head 42px + padding 10px = ~100px */
     @media (max-width: 820px) {
       .parallel-grid.split #engContent,
       .parallel-grid.split #tamContent {
-        height: calc(100svh - 100px); /* svh = small stable viewport (no browser chrome) */
+        height: calc(100svh - 100px);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-y: contain;
+        touch-action: pan-y;          /* tell browser: vertical swipes = scroll, not drag */
       }
+      /* Footer has no place in split reading mode */
+      main.split-active ~ footer { display: none; }
     }
   </style>
 </head>
@@ -1049,28 +1052,45 @@ function applySplitLayout() {
 
 function addHandleEvents(handle) {
   let startX, startRatio;
-  const onStart = x => {
-    startX = x; startRatio = splitRatio;
-    handle.classList.add('dragging'); isDragging = true;
-  };
-  const onMove = x => {
-    if (!isDragging) return;
+
+  const doMove = x => {
     const gridW = document.querySelector('.parallel-grid').offsetWidth;
     splitRatio = Math.max(20, Math.min(80, startRatio + ((x - startX) / gridW) * 100));
     applySplitRatio();
   };
-  const onEnd = () => {
-    if (!isDragging) return;
+
+  // These are only attached WHILE dragging so they never block panel scroll momentum
+  const onMouseMove = e => { doMove(e.clientX); e.preventDefault(); };
+  const onMouseUp   = () => stopDrag();
+  const onTouchMove = e => { doMove(e.touches[0].clientX); e.preventDefault(); };
+  const onTouchEnd  = () => stopDrag();
+
+  const stopDrag = () => {
     isDragging = false;
     handle.classList.remove('dragging');
     localStorage.setItem('splitRatio', splitRatio);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup',   onMouseUp);
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend',  onTouchEnd);
   };
-  handle.addEventListener('mousedown',  e => { onStart(e.clientX); e.preventDefault(); });
-  document.addEventListener('mousemove', e => { if (isDragging) { onMove(e.clientX); e.preventDefault(); } });
-  document.addEventListener('mouseup',   () => onEnd());
-  handle.addEventListener('touchstart',  e => { onStart(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
-  document.addEventListener('touchmove', e => { if (isDragging) { onMove(e.touches[0].clientX); e.preventDefault(); } }, { passive: false });
-  document.addEventListener('touchend',  () => onEnd());
+
+  handle.addEventListener('mousedown', e => {
+    startX = e.clientX; startRatio = splitRatio;
+    handle.classList.add('dragging'); isDragging = true;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup',   onMouseUp);
+    e.preventDefault();
+  });
+
+  handle.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; startRatio = splitRatio;
+    handle.classList.add('dragging'); isDragging = true;
+    // Non-passive ONLY while drag is live — never blocks panel scroll at rest
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend',  onTouchEnd);
+    e.preventDefault();
+  }, { passive: false });
 }
 
 function swapPanels() {
