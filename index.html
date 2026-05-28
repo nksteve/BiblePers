@@ -467,10 +467,13 @@
       }
       .split-handle.dragging, .split-handle:hover { background: var(--navy); }
 
-      .parallel-grid.split .panel-head   { padding: 0.4rem 0.3rem; }
-      .parallel-grid.split .panel-name   { font-size: 0.78rem; }
+      .parallel-grid.split .panel-head              { padding: 0.4rem 0.3rem; }
+      .parallel-grid.split .panel-head > div:first-child { flex: 1; min-width: 0; overflow: hidden; }
+      .parallel-grid.split .panel-name   { font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .parallel-grid.split .panel-ref    { font-size: 0.6rem; }
       .parallel-grid.split .panel-badge  { display: none; }
+      .parallel-grid.split .panel-fs-controls { flex-shrink: 0; }
+      .parallel-grid.split .panel-fs-btn { font-size: 0.62rem; padding: 0.1rem 0.32rem; }
 
       .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; }
       .parallel-grid.split .verse        { gap: 0.2rem; padding: 0.15rem 0.1rem; }
