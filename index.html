@@ -411,9 +411,30 @@
     .sp-link:hover { text-decoration: underline; }
     [data-theme="dark"] .sp-link { color: #8ab4d8; }
 
+    /* Layout toggle button */
+    .layout-btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem; font-weight: 600;
+      padding: 0.38rem 0.65rem;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--navy);
+      cursor: pointer; outline: none;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .layout-btn.active { background: var(--navy); border-color: var(--navy); color: white; }
+    [data-theme="dark"] .layout-btn { color: #8ab4d8; }
+    [data-theme="dark"] .layout-btn.active { background: #2a4a70; border-color: #2a4a70; color: white; }
+
     /* ── Responsive ── */
     @media (max-width: 820px) {
       .parallel-grid { grid-template-columns: 1fr; }
+      .parallel-grid.split { grid-template-columns: 1fr 1fr; }
+      .parallel-grid.split .vtxt      { font-size: calc(0.75rem * var(--fs-scale)); line-height: 1.65; }
+      .parallel-grid.split .vtxt.tamil { font-size: calc(0.72rem * var(--fs-scale)); line-height: 1.7; }
+      .parallel-grid.split .panel-name { font-size: 0.85rem; }
+      .parallel-grid.split .vnum      { font-size: 0.6rem; min-width: 1.1rem; }
       .nav-bar { top: 58px; padding: 0.55rem 1rem; }
       main { padding: 0.9rem 1rem; }
       .nav-label { display: none; }
@@ -509,6 +530,7 @@
   <div class="sel-wrap"><select id="chapterSelect" aria-label="Chapter"></select></div>
   <button class="btn" id="prevBtn" onclick="prevChapter()">‹ Prev</button>
   <button class="btn" id="nextBtn" onclick="nextChapter()">Next ›</button>
+  <button class="layout-btn" id="splitBtn" onclick="toggleSplit()" title="Toggle split view">⧉ Split</button>
   <div class="nav-spacer"></div>
   <span class="nav-label">English:</span>
   <div class="sel-wrap">
@@ -659,10 +681,11 @@ let chapter  = 3;
 const FONT_SCALES = [0.82, 0.92, 1.0, 1.15, 1.32];
 const FONT_LABELS = ['X-Small', 'Small', 'Medium', 'Large', 'X-Large'];
 
-let darkMode  = localStorage.getItem('darkMode') === 'true';
-let fontStep  = parseInt(localStorage.getItem('fontStep') ?? '2'); // default Medium
-let apiKey    = localStorage.getItem('apiBibleKey') || '';
-let tamTrans  = localStorage.getItem('tamTrans') || 'irv';
+let darkMode    = localStorage.getItem('darkMode') === 'true';
+let fontStep    = parseInt(localStorage.getItem('fontStep') ?? '2'); // default Medium
+let apiKey      = localStorage.getItem('apiBibleKey') || '';
+let tamTrans    = localStorage.getItem('tamTrans') || 'irv';
+let splitLayout = localStorage.getItem('splitLayout') === 'true';
 
 function initSettings() {
   // Dark mode
@@ -671,6 +694,9 @@ function initSettings() {
 
   // Font size
   applyFontSize();
+
+  // Split layout
+  applySplitLayout();
 
   // Tamil translation
   document.getElementById('tamTransSelect').value = tamTrans;
@@ -727,6 +753,26 @@ function syncNkjvOption(add) {
   } else if (!add && existing) {
     existing.remove();
     if (sel.value === 'nkjv') { sel.value = 'kjv'; loadChapter(); }
+  }
+}
+
+function toggleSplit() {
+  splitLayout = !splitLayout;
+  localStorage.setItem('splitLayout', splitLayout);
+  applySplitLayout();
+}
+
+function applySplitLayout() {
+  const grid = document.querySelector('.parallel-grid');
+  const btn  = document.getElementById('splitBtn');
+  if (splitLayout) {
+    grid.classList.add('split');
+    btn.classList.add('active');
+    btn.textContent = '⧉ Split';
+  } else {
+    grid.classList.remove('split');
+    btn.classList.remove('active');
+    btn.textContent = '⧉ Split';
   }
 }
 
