@@ -239,10 +239,40 @@
 
     .vnum {
       font-family: 'Inter', sans-serif;
-      color: var(--gold); font-size: 0.68rem; font-weight: 700;
-      min-width: 1.4rem; text-align: right; padding-top: 5px;
-      flex-shrink: 0; user-select: none;
+      color: var(--gold); font-size: 0.8rem; font-weight: 700;
+      min-width: 1.6rem; text-align: right; padding-top: 4px;
+      flex-shrink: 0; user-select: none; cursor: pointer;
     }
+    .vnum:hover { opacity: 0.75; }
+
+    /* Multi-verse selection */
+    .verse.v-selected { background: rgba(201,146,58,0.18) !important; border-radius: 5px; }
+    .verse.v-selected .vnum { color: var(--gold); opacity: 1; font-size: 0.9rem; }
+
+    /* Fixed multi-copy bar */
+    .multi-copy-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 600;
+      display: none; align-items: center; gap: 0.6rem;
+      padding: 0.65rem 1.1rem;
+      background: var(--navy); color: #fff;
+      border-top: 2px solid var(--gold);
+      box-shadow: 0 -3px 18px rgba(0,0,0,0.35);
+      font-size: 0.88rem; font-family: 'Inter', sans-serif;
+    }
+    .multi-copy-bar.visible { display: flex; }
+    .mc-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: #fff; padding: 0.28rem 0.85rem; border-radius: 5px;
+      cursor: pointer; font-size: 0.83rem; font-family: 'Inter', sans-serif;
+      transition: background 0.15s;
+    }
+    .mc-btn:hover { background: rgba(255,255,255,0.28); }
+    .mc-btn.ok { background: rgba(100,220,120,0.3); }
+    .mc-clear {
+      background: none; border: none; color: rgba(255,255,255,0.65);
+      cursor: pointer; font-size: 1rem; padding: 0.1rem 0.3rem; margin-left: auto;
+    }
+    .mc-clear:hover { color: #fff; }
 
     .vtxt {
       font-family: 'Crimson Text', serif;
@@ -660,7 +690,7 @@
 
       .parallel-grid.split .verses-wrap  { padding: 0.35rem 0.2rem 1rem; display: block; width: 100%; box-sizing: border-box; }
       .parallel-grid.split .verse        { display: flex; gap: 0.2rem; padding: 0.15rem 0.1rem; box-sizing: border-box; min-width: 0; }
-      .parallel-grid.split .vnum         { font-size: 0.58rem; min-width: 0.85rem; flex-shrink: 0; padding-top: 3px; }
+      .parallel-grid.split .vnum         { font-size: 0.72rem; min-width: 1rem; flex-shrink: 0; padding-top: 3px; }
       .parallel-grid.split .vtxt         { flex: 1; min-width: 0; width: 0; font-size: calc(0.76rem * var(--fs-scale-eng)); line-height: 1.55; overflow-wrap: anywhere; word-break: break-word; }
       .parallel-grid.split .vtxt.tamil   { flex: 1; min-width: 0; width: 0; font-size: calc(0.72rem * var(--fs-scale-tam)); line-height: 1.6;  overflow-wrap: anywhere; word-break: break-word; }
       .parallel-grid.split .section-head { font-size: calc(0.65rem * var(--fs-scale-tam)); margin: 0.5rem 0 0.2rem 0.1rem; }
@@ -1008,6 +1038,7 @@ let isDragging   = false;
 let customTextColor = localStorage.getItem('customTextColor') || '';
 let customBgColor   = localStorage.getItem('customBgColor')   || '';
 let activePreset    = localStorage.getItem('activePreset')    || 'auto';
+let activeSelectPanel = null; // 'eng' | 'tam' — which panel has active verse selection
 
 function initSettings() {
   // Dark mode
@@ -1415,14 +1446,29 @@ function gdocLoadSaved(contentId, rawUrl) {
 
 // Copy-verse click handler (event delegation — works for all dynamically rendered verses)
 document.addEventListener('click', e => {
+  // Verse number tap → toggle multi-select
+  const vnum = e.target.closest('.vnum');
+  if (vnum) {
+    const verseEl = vnum.closest('.verse');
+    if (!verseEl) return;
+    const panel = verseEl.closest('#engContent') ? 'eng' : 'tam';
+    // Clear the other panel's selection
+    if (activeSelectPanel && activeSelectPanel !== panel) clearAllSelection();
+    activeSelectPanel = panel;
+    verseEl.classList.toggle('v-selected');
+    updateMultiBar();
+    return;
+  }
+
+  // Copy button → single-verse copy
   const btn = e.target.closest('.vcopy');
   if (!btn) return;
   const verseEl = btn.closest('.verse');
   if (!verseEl) return;
   const ref  = verseEl.dataset.ref  || '';
-  const vnum = verseEl.dataset.vnum || '';
+  const vnum2 = verseEl.dataset.vnum || '';
   const text = verseEl.dataset.vtxt || '';
-  const line = ref ? `${ref}:${vnum}  ${text}` : `v.${vnum}  ${text}`;
+  const line = ref ? `${ref}:${vnum2}  ${text}` : `v.${vnum2}  ${text}`;
   navigator.clipboard.writeText(line).then(() => {
     btn.textContent = '✓ copied';
     btn.classList.add('ok');
@@ -1430,6 +1476,44 @@ document.addEventListener('click', e => {
   }).catch(() => { btn.textContent = 'copy'; });
   e.stopPropagation();
 });
+
+// ── Multi-verse selection ────────────────────────────────────────────────────
+function updateMultiBar() {
+  const bar = document.getElementById('multiCopyBar');
+  if (!activeSelectPanel) { bar.classList.remove('visible'); return; }
+  const selected = document.querySelectorAll(`#${activeSelectPanel}Content .v-selected`);
+  if (!selected.length) { activeSelectPanel = null; bar.classList.remove('visible'); return; }
+  const n = selected.length;
+  const panel = activeSelectPanel === 'eng' ? 'English' : 'Tamil';
+  document.getElementById('multiCopyCount').textContent = `${panel}: ${n} verse${n > 1 ? 's' : ''} selected`;
+  document.getElementById('multiCopyBtn').textContent = '📋 Copy';
+  document.getElementById('multiCopyBtn').classList.remove('ok');
+  bar.classList.add('visible');
+}
+
+function doMultiCopy() {
+  if (!activeSelectPanel) return;
+  const selected = document.querySelectorAll(`#${activeSelectPanel}Content .v-selected`);
+  const lines = Array.from(selected).map(v => {
+    const ref  = v.dataset.ref  || '';
+    const vnum = v.dataset.vnum || '';
+    const text = v.dataset.vtxt || '';
+    return ref ? `${ref}:${vnum}  ${text}` : `v.${vnum}  ${text}`;
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = document.getElementById('multiCopyBtn');
+    btn.textContent = `✓ Copied ${lines.length} verse${lines.length > 1 ? 's' : ''}`;
+    btn.classList.add('ok');
+    setTimeout(clearAllSelection, 2000);
+  }).catch(() => {});
+}
+
+function clearAllSelection() {
+  document.querySelectorAll('.verse.v-selected').forEach(v => v.classList.remove('v-selected'));
+  activeSelectPanel = null;
+  const bar = document.getElementById('multiCopyBar');
+  if (bar) bar.classList.remove('visible');
+}
 
 // Settings panel open/close
 function openSettings() {
@@ -1653,6 +1737,7 @@ async function loadChapter() {
   document.getElementById('tamRef').textContent    = ref;
 
   // Only show spinner for Bible panels — don't clobber an open Google Doc
+  clearAllSelection();
   if (engTr !== 'doc') document.getElementById('engContent').innerHTML = loadingHTML();
   if (tamTr !== 'doc') document.getElementById('tamContent').innerHTML = loadingHTML();
 
@@ -1711,5 +1796,12 @@ buildBookSelect();
 rebuildChapterSelect();
 loadChapter();
 </script>
+
+<!-- Multi-verse copy bar (fixed bottom) -->
+<div class="multi-copy-bar" id="multiCopyBar">
+  <span id="multiCopyCount">0 verses selected</span>
+  <button class="mc-btn" id="multiCopyBtn" onclick="doMultiCopy()">📋 Copy</button>
+  <button class="mc-clear" onclick="clearAllSelection()" title="Clear selection">✕</button>
+</div>
 </body>
 </html>
