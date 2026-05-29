@@ -809,6 +809,7 @@
             <option value="nkjv">NKJV</option>
             <option value="kjv">KJV</option>
             <option value="web">WEB</option>
+            <option value="amp">AMP</option>
             <option value="doc">📝 My Doc</option>
           </select>
         </div>
@@ -822,7 +823,7 @@
 </main>
 
 <footer>
-  English: King James Version / World English Bible / NKJV via API.Bible &nbsp;·&nbsp; Tamil: IRV (இண்டியன் ரிவைஸ்டு வெர்ஸன்) / O.V. BSI (பரிசுத்த வேதாகமம்)<br>
+  English: King James Version / World English Bible / NKJV via API.Bible / Amplified Bible via bolls.life &nbsp;·&nbsp; Tamil: IRV (இண்டியன் ரிவைஸ்டு வெர்ஸன்) / O.V. BSI (பரிசுத்த வேதாகமம்)<br>
   <em>Switch Tamil version using the Tamil selector in the nav bar.</em><br>
   English via <a href="https://bible-api.com" target="_blank">bible-api.com</a> &amp; <a href="https://api.bible" target="_blank">API.Bible</a>
   &nbsp;·&nbsp;
@@ -1375,11 +1376,19 @@ function syncNav() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Fetch helpers
 // ─────────────────────────────────────────────────────────────────────────────
-async function fetchEnglish(book, ch, trans) {
+async function fetchEnglish(book, ch, trans, bookNum) {
   if (trans === 'nkjv') return fetchNKJV(book.u, ch);
+  if (trans === 'amp')  return fetchEngBolls('AMP', bookNum, ch);
   const r = await fetch(`https://bible-api.com/${book.a}+${ch}?translation=${trans}`);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
+}
+
+async function fetchEngBolls(code, bookNum, ch) {
+  const r = await fetch(`https://bolls.life/get-text/${code}/${bookNum}/${ch}/`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const verses = await r.json();
+  return { _bolls: true, verses };
 }
 
 async function fetchNKJV(usfm, ch) {
@@ -1531,7 +1540,7 @@ async function loadChapter() {
   }
 
   const [eng, tam] = await Promise.allSettled([
-    engTr !== 'doc' ? fetchEnglish(book, chapter, engTr) : Promise.resolve(null),
+    engTr !== 'doc' ? fetchEnglish(book, chapter, engTr, bookIdx + 1) : Promise.resolve(null),
     tamTr !== 'doc' ? fetchTamil(book.u, chapter, bookIdx + 1) : Promise.resolve(null),
   ]);
 
