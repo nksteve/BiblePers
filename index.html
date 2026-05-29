@@ -1492,9 +1492,9 @@ function doMultiCopy() {
   for (const [ref, vlist] of Object.entries(groupMap)) {
     const range  = buildVerseRange(vlist.map(v => v.vnum));
     const header = ref ? `${ref}:${range}` : `v.${range}`;
-    // All verse texts flow on ONE line with superscript numbers — no \n between verses
+    // Everything on one line — ref + all verses inline, zero newlines = zero gaps
     const body   = vlist.map(v => `${toSup(v.vnum)} ${v.text}`).join('  ');
-    blocks.push(`${header}\n${body}`);
+    blocks.push(`${header}  ${body}`);
   }
 
   const plainText = blocks.join('\n').trim();
