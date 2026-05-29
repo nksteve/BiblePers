@@ -412,6 +412,56 @@
     .gdoc-saved-pill:hover { background: var(--navy); border-color: var(--navy); color: white; }
     .gdoc-saved-pill.active { background: var(--navy); border-color: var(--navy); color: white; }
 
+    /* ── Notes ── */
+    .note-icon {
+      display: inline-block; background: none; border: none; cursor: pointer;
+      font-size: 0.7rem; opacity: 0.18; padding: 0 0.15rem;
+      vertical-align: middle; margin-left: 0.3rem;
+      transition: opacity 0.15s;
+      line-height: 1;
+    }
+    .note-icon.has-note { opacity: 1; }
+    .note-icon:hover, .note-icon:focus { opacity: 0.7; outline: none; }
+    .note-block {
+      display: block; margin: 0.4rem 0 0.3rem 0;
+      padding: 0.45rem 0.7rem;
+      background: rgba(201,146,58,0.12);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 5px 5px 0;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem;
+      color: var(--text); line-height: 1.5;
+    }
+    [data-theme="dark"] .note-block { background: rgba(201,146,58,0.1); }
+    .note-text { white-space: pre-wrap; }
+    .note-actions { display: flex; gap: 0.4rem; margin-top: 0.35rem; flex-wrap: wrap; }
+    .note-btn {
+      background: none; border: 1px solid var(--border); border-radius: 4px;
+      padding: 0.12rem 0.5rem; font-size: 0.72rem; cursor: pointer;
+      color: var(--muted); font-family: 'Inter', sans-serif;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .note-btn:hover { color: var(--text); border-color: var(--text); }
+    .note-btn.ndel:hover { color: #d03030; border-color: #d03030; }
+    .note-ta {
+      width: 100%; min-height: 64px; max-height: 200px;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 0.4rem 0.5rem; resize: vertical;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; line-height: 1.5;
+      box-sizing: border-box;
+    }
+    .note-ta:focus { outline: none; border-color: var(--gold); }
+    /* Panel notes toggle button */
+    .pnotes-btn {
+      background: none; border: 1px solid rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.55); border-radius: 4px;
+      padding: 0.1rem 0.38rem; font-size: 0.72rem; cursor: pointer;
+      flex-shrink: 0; transition: background 0.15s, color 0.15s;
+    }
+    .pnotes-btn.active {
+      background: rgba(201,146,58,0.3); border-color: var(--gold); color: white;
+    }
+
     /* ── States ── */
     .state-box {
       display: flex; flex-direction: column;
@@ -861,6 +911,7 @@
           <button class="panel-fs-btn" id="tamFsDec" onclick="changeFontSizeTam(-1)" title="Smaller">A−</button>
           <button class="panel-fs-btn" id="tamFsInc" onclick="changeFontSizeTam(1)"  title="Larger">A+</button>
         </div>
+        <button class="pnotes-btn" id="tamNotesBtn" onclick="togglePanelNotes('tam')" title="Show/hide notes">📝</button>
         <div class="panel-sel-wrap">
           <select class="panel-sel" id="tamTransSelect" aria-label="Tamil translation" onchange="onTamTransChange()">
             <option value="irv">IRV</option>
@@ -884,6 +935,7 @@
           <button class="panel-fs-btn" id="engFsDec" onclick="changeFontSizeEng(-1)" title="Smaller">A−</button>
           <button class="panel-fs-btn" id="engFsInc" onclick="changeFontSizeEng(1)"  title="Larger">A+</button>
         </div>
+        <button class="pnotes-btn" id="engNotesBtn" onclick="togglePanelNotes('eng')" title="Show/hide notes">📝</button>
         <div class="panel-sel-wrap">
           <select class="panel-sel" id="transSelect" aria-label="English translation" onchange="onEngTransChange()">
             <option value="nkjv">NKJV</option>
@@ -1017,7 +1069,10 @@ let isDragging   = false;
 let customTextColor = localStorage.getItem('customTextColor') || '';
 let customBgColor   = localStorage.getItem('customBgColor')   || '';
 let activePreset    = localStorage.getItem('activePreset')    || 'auto';
-let activeSelectPanel = null; // 'eng' | 'tam' — which panel has active verse selection
+let activeSelectPanel  = null; // 'eng' | 'tam' — which panel has active verse selection
+let engNotesVisible    = localStorage.getItem('engNotesVisible') === 'true';
+let tamNotesVisible    = localStorage.getItem('tamNotesVisible') === 'true';
+let copyIncludeNotes   = false;
 
 function initSettings() {
   // Dark mode
@@ -1046,6 +1101,10 @@ function initSettings() {
 
   // Reading colors
   applyReadingColors();
+
+  // Notes panel toggle buttons
+  document.getElementById('engNotesBtn')?.classList.toggle('active', engNotesVisible);
+  document.getElementById('tamNotesBtn')?.classList.toggle('active', tamNotesVisible);
 
   // API key (optional override)
   const inp = document.getElementById('apiKeyInput');
@@ -1425,6 +1484,16 @@ function gdocLoadSaved(contentId, rawUrl) {
 
 // Copy-verse click handler (event delegation — works for all dynamically rendered verses)
 document.addEventListener('click', e => {
+  // Note icon tap
+  const noteIcon = e.target.closest('.note-icon');
+  if (noteIcon) { onNoteIconClick(noteIcon); return; }
+
+  // Note block buttons
+  if (e.target.closest('.nsave'))   { onNoteSave(e.target.closest('.nsave'));     return; }
+  if (e.target.closest('.ncancel')) { onNoteCancel(e.target.closest('.ncancel')); return; }
+  if (e.target.closest('.nedit'))   { onNoteEdit(e.target.closest('.nedit'));     return; }
+  if (e.target.closest('.ndel'))    { onNoteDelete(e.target.closest('.ndel'));    return; }
+
   // Verse number tap → toggle multi-select
   const vnum = e.target.closest('.vnum');
   if (vnum) {
@@ -1493,7 +1562,11 @@ function doMultiCopy() {
     const range  = buildVerseRange(vlist.map(v => v.vnum));
     const header = ref ? `${ref}:${range}` : `v.${range}`;
     // Everything on one line — ref + all verses inline, zero newlines = zero gaps
-    const body   = vlist.map(v => `${toSup(v.vnum)} ${v.text}`).join('  ');
+    const body = vlist.map(v => {
+      const note = copyIncludeNotes ? getNote(activeSelectPanel, v.ref, v.vnum) : '';
+      const notePart = note ? `[${note}] ` : '';
+      return `${notePart}${toSup(v.vnum)} ${v.text}`;
+    }).join('  ');
     blocks.push(`${header}  ${body}`);
   }
 
@@ -1512,6 +1585,131 @@ function clearAllSelection() {
   activeSelectPanel = null;
   const bar = document.getElementById('multiCopyBar');
   if (bar) bar.classList.remove('visible');
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+function noteKey(lang, ref, vnum) {
+  return `note_${lang}_${String(ref).replace(/\s+/g,'_')}_${vnum}`;
+}
+function getNote(lang, ref, vnum) {
+  return localStorage.getItem(noteKey(lang, ref, vnum)) || '';
+}
+function saveNote(lang, ref, vnum, text) {
+  if (text.trim()) localStorage.setItem(noteKey(lang, ref, vnum), text.trim());
+  else             localStorage.removeItem(noteKey(lang, ref, vnum));
+}
+
+function _noteBlockHTML(lang, ref, vnum, mode) {
+  const text = getNote(lang, ref, vnum);
+  const d = `data-lang="${esc(lang)}" data-ref="${esc(ref)}" data-vnum="${esc(String(vnum))}"`;
+  if (mode === 'edit') {
+    return `<div class="note-block" ${d}>`
+      + `<textarea class="note-ta" placeholder="Type your note…">${esc(text)}</textarea>`
+      + `<div class="note-actions">`
+      + `<button class="note-btn nsave">Save</button>`
+      + `<button class="note-btn ncancel">Cancel</button>`
+      + `</div></div>`;
+  }
+  return `<div class="note-block" ${d}>`
+    + `<div class="note-text">${esc(text)}</div>`
+    + `<div class="note-actions">`
+    + `<button class="note-btn nedit">✎ Edit</button>`
+    + `<button class="note-btn ndel">🗑 Delete</button>`
+    + `</div></div>`;
+}
+
+function _insertNoteBlock(verseEl, lang, ref, vnum, mode) {
+  verseEl.querySelector('.note-block')?.remove();
+  verseEl.insertAdjacentHTML('beforeend', _noteBlockHTML(lang, ref, vnum, mode));
+  if (mode === 'edit') verseEl.querySelector('.note-ta')?.focus();
+}
+
+// Called when 📝 icon is tapped
+function onNoteIconClick(iconBtn) {
+  const { lang, ref, vnum } = iconBtn.dataset;
+  const verseEl  = iconBtn.closest('.verse');
+  const existing = verseEl.querySelector('.note-block');
+  if (existing) { existing.remove(); return; }
+  const hasNote  = !!getNote(lang, ref, vnum);
+  _insertNoteBlock(verseEl, lang, ref, vnum, hasNote ? 'view' : 'edit');
+}
+
+// Note block button handlers (delegated)
+function onNoteSave(btn) {
+  const block = btn.closest('.note-block');
+  const { lang, ref, vnum } = block.dataset;
+  const text = block.querySelector('.note-ta').value;
+  saveNote(lang, ref, vnum, text);
+  const verseEl = block.closest('.verse');
+  if (text.trim()) {
+    block.remove();
+    verseEl.insertAdjacentHTML('beforeend', _noteBlockHTML(lang, ref, vnum, 'view'));
+    verseEl.querySelector('.note-icon')?.classList.add('has-note');
+  } else {
+    block.remove();
+    verseEl.querySelector('.note-icon')?.classList.remove('has-note');
+  }
+}
+function onNoteCancel(btn) {
+  const block = btn.closest('.note-block');
+  const { lang, ref, vnum } = block.dataset;
+  const verseEl = block.closest('.verse');
+  block.remove();
+  if (getNote(lang, ref, vnum)) {
+    verseEl.insertAdjacentHTML('beforeend', _noteBlockHTML(lang, ref, vnum, 'view'));
+  }
+}
+function onNoteEdit(btn) {
+  const block = btn.closest('.note-block');
+  const { lang, ref, vnum } = block.dataset;
+  const verseEl = block.closest('.verse');
+  block.remove();
+  _insertNoteBlock(verseEl, lang, ref, vnum, 'edit');
+}
+function onNoteDelete(btn) {
+  const block = btn.closest('.note-block');
+  const { lang, ref, vnum } = block.dataset;
+  if (!confirm('Delete this note?')) return;
+  saveNote(lang, ref, vnum, '');
+  const verseEl = block.closest('.verse');
+  block.remove();
+  verseEl.querySelector('.note-icon')?.classList.remove('has-note');
+}
+
+// Refresh note icons after a chapter loads; also show blocks if panel notes are visible
+function refreshNoteIcons(contentId, lang) {
+  const visible = lang === 'eng' ? engNotesVisible : tamNotesVisible;
+  document.querySelectorAll(`#${contentId} .note-icon`).forEach(icon => {
+    const { ref, vnum } = icon.dataset;
+    const has = !!getNote(lang, ref, vnum);
+    icon.classList.toggle('has-note', has);
+    if (visible && has) {
+      const verseEl = icon.closest('.verse');
+      if (!verseEl.querySelector('.note-block'))
+        verseEl.insertAdjacentHTML('beforeend', _noteBlockHTML(lang, ref, vnum, 'view'));
+    }
+  });
+}
+
+// Toggle all notes visible in a panel
+function togglePanelNotes(lang) {
+  const contentId = lang === 'eng' ? 'engContent' : 'tamContent';
+  const btnId     = lang === 'eng' ? 'engNotesBtn' : 'tamNotesBtn';
+  if (lang === 'eng') { engNotesVisible = !engNotesVisible; localStorage.setItem('engNotesVisible', engNotesVisible); }
+  else                { tamNotesVisible = !tamNotesVisible; localStorage.setItem('tamNotesVisible', tamNotesVisible); }
+  const visible = lang === 'eng' ? engNotesVisible : tamNotesVisible;
+  document.getElementById(btnId)?.classList.toggle('active', visible);
+  if (visible) {
+    refreshNoteIcons(contentId, lang);
+  } else {
+    document.querySelectorAll(`#${contentId} .note-block`).forEach(b => b.remove());
+  }
+}
+
+// Copy-bar notes toggle
+function toggleCopyNotes() {
+  copyIncludeNotes = !copyIncludeNotes;
+  document.getElementById('mcNotesToggle')?.classList.toggle('ok', copyIncludeNotes);
 }
 
 // Settings panel open/close
@@ -1676,6 +1874,7 @@ function renderEnglish(result, ref) {
     `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${v.num}" data-vtxt="${esc(stripTags(v.text))}">` +
     `<span class="vnum">${v.num}</span>` +
     `<span class="vtxt">${safeInline(v.text)}</span>` +
+    `<button class="note-icon" data-lang="eng" data-ref="${esc(ref||'')}" data-vnum="${v.num}" title="Note">📝</button>` +
     `</div>`
   ).join('') + '</div>';
 }
@@ -1695,6 +1894,7 @@ function renderTamil(result, ref) {
     return '<div class="verses-wrap">' + verses.map(v =>
       `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${v.verse}" data-vtxt="${esc(v.text)}">` +
       `<span class="vnum">${v.verse}</span><span class="vtxt tamil">${esc(v.text)}</span>` +
+      `<button class="note-icon" data-lang="tam" data-ref="${esc(ref||'')}" data-vnum="${v.verse}" title="Note">📝</button>` +
       `</div>`
     ).join('') + '</div>';
   }
@@ -1711,6 +1911,7 @@ function renderTamil(result, ref) {
       const txt = extractText(item.content);
       html += `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${item.number}" data-vtxt="${esc(txt)}">` +
         `<span class="vnum">${item.number}</span><span class="vtxt tamil">${esc(txt)}</span>` +
+        `<button class="note-icon" data-lang="tam" data-ref="${esc(ref||'')}" data-vnum="${item.number}" title="Note">📝</button>` +
         `</div>`;
     }
   }
@@ -1753,10 +1954,10 @@ async function loadChapter() {
     tamTr !== 'doc' ? fetchTamil(book.u, chapter, bookIdx + 1) : Promise.resolve(null),
   ]);
 
-  if (engTr !== 'doc') document.getElementById('engContent').innerHTML = renderEnglish(eng, ref);
+  if (engTr !== 'doc') { document.getElementById('engContent').innerHTML = renderEnglish(eng, ref); refreshNoteIcons('engContent', 'eng'); }
   else showDocPanel('engContent');
 
-  if (tamTr !== 'doc') document.getElementById('tamContent').innerHTML = renderTamil(tam, ref);
+  if (tamTr !== 'doc') { document.getElementById('tamContent').innerHTML = renderTamil(tam, ref); refreshNoteIcons('tamContent', 'tam'); }
   else showDocPanel('tamContent');
 }
 
@@ -1795,6 +1996,7 @@ loadChapter();
 <!-- Multi-verse copy bar (fixed bottom) -->
 <div class="multi-copy-bar" id="multiCopyBar">
   <span id="multiCopyCount">0 verses selected</span>
+  <button class="mc-btn" id="mcNotesToggle" onclick="toggleCopyNotes()" title="Include my notes in copy">📝 Notes</button>
   <button class="mc-btn" id="multiCopyBtn" onclick="doMultiCopy()">📋 Copy</button>
   <button class="mc-clear" onclick="clearAllSelection()" title="Clear selection">✕</button>
 </div>
