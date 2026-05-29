@@ -412,28 +412,6 @@
     .gdoc-saved-pill:hover { background: var(--navy); border-color: var(--navy); color: white; }
     .gdoc-saved-pill.active { background: var(--navy); border-color: var(--navy); color: white; }
 
-    /* ── Copy-verse button ── */
-    .vcopy {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.05rem 0.32rem;
-      font-size: 0.58rem; font-weight: 600;
-      color: var(--muted);
-      cursor: pointer;
-      display: inline-block;
-      vertical-align: middle;
-      margin-left: 0.35rem;
-      opacity: 0;
-      transition: opacity 0.15s, background 0.12s, color 0.12s;
-      white-space: nowrap;
-    }
-    .verse:hover .vcopy,
-    .verse:focus-within .vcopy { opacity: 1; }
-    .vcopy:hover  { background: var(--navy); border-color: var(--navy); color: white; opacity: 1; }
-    .vcopy.ok     { color: #3a9c5e; border-color: #3a9c5e; opacity: 1; }
-    @media (max-width: 820px) { .vcopy { opacity: 0.35; } }
-
     /* ── States ── */
     .state-box {
       display: flex; flex-direction: column;
@@ -1461,21 +1439,6 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // Copy button → single-verse copy
-  const btn = e.target.closest('.vcopy');
-  if (!btn) return;
-  const verseEl = btn.closest('.verse');
-  if (!verseEl) return;
-  const ref  = verseEl.dataset.ref  || '';
-  const vnum2 = verseEl.dataset.vnum || '';
-  const text = verseEl.dataset.vtxt || '';
-  const line = ref ? `${ref}:${vnum2}  ${text}` : `v.${vnum2}  ${text}`;
-  navigator.clipboard.writeText(line).then(() => {
-    btn.textContent = '✓ copied';
-    btn.classList.add('ok');
-    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('ok'); }, 1800);
-  }).catch(() => { btn.textContent = 'copy'; });
-  e.stopPropagation();
 });
 
 // ── Multi-verse selection ────────────────────────────────────────────────────
@@ -1707,7 +1670,6 @@ function renderEnglish(result, ref) {
     `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${v.num}" data-vtxt="${esc(stripTags(v.text))}">` +
     `<span class="vnum">${v.num}</span>` +
     `<span class="vtxt">${safeInline(v.text)}</span>` +
-    `<button class="vcopy">copy</button>` +
     `</div>`
   ).join('') + '</div>';
 }
@@ -1720,9 +1682,6 @@ function renderTamil(result, ref) {
   if (result.status === 'rejected')
     return errorHTML(`Could not load Tamil — ${result.reason.message}`);
 
-  const vcopy = (num, txt) =>
-    `<button class="vcopy" data-ref="${esc(ref||'')}" data-vnum="${num}" data-vtxt="${esc(txt)}">copy</button>`;
-
   // bolls.life format: { _bolls: true, verses: [{pk, verse, text}] }
   if (result.value?._bolls) {
     const verses = result.value.verses || [];
@@ -1730,7 +1689,7 @@ function renderTamil(result, ref) {
     return '<div class="verses-wrap">' + verses.map(v =>
       `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${v.verse}" data-vtxt="${esc(v.text)}">` +
       `<span class="vnum">${v.verse}</span><span class="vtxt tamil">${esc(v.text)}</span>` +
-      `<button class="vcopy">copy</button></div>`
+      `</div>`
     ).join('') + '</div>';
   }
 
@@ -1746,7 +1705,7 @@ function renderTamil(result, ref) {
       const txt = extractText(item.content);
       html += `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${item.number}" data-vtxt="${esc(txt)}">` +
         `<span class="vnum">${item.number}</span><span class="vtxt tamil">${esc(txt)}</span>` +
-        `<button class="vcopy">copy</button></div>`;
+        `</div>`;
     }
   }
   return html + '</div>';
