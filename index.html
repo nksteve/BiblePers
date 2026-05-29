@@ -1475,10 +1475,10 @@ function doMultiCopy() {
   const verses = Array.from(selected).map(v => ({
     ref:  v.dataset.ref  || '',
     vnum: parseInt(v.dataset.vnum) || 0,
-    text: (v.dataset.vtxt || '').replace(/\s*\n\s*/g, ' ')
+    text: (v.dataset.vtxt || '').replace(/[\r\n]+/g, ' ').trim()
   }));
 
-  // Group by chapter ref (handles edge case of selection spanning chapters)
+  // Group by chapter ref
   const groupMap = {};
   for (const v of verses) {
     (groupMap[v.ref] = groupMap[v.ref] || []).push(v);
@@ -1492,7 +1492,7 @@ function doMultiCopy() {
     blocks.push([header, ...verseLines].join('\n'));
   }
 
-  const fullText = blocks.join('\n');
+  const fullText = blocks.join('\n').replace(/\n{2,}/g, '\n').trim();
   navigator.clipboard.writeText(fullText).then(() => {
     const btn = document.getElementById('multiCopyBtn');
     btn.textContent = `✓ Copied ${verses.length} verse${verses.length > 1 ? 's' : ''}`;
