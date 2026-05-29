@@ -698,15 +698,12 @@
 
       /* Drag handle */
       .split-handle {
-        width: 7px; flex-shrink: 0;
+        width: 3px; flex-shrink: 0;
         background: var(--border);
         cursor: col-resize; touch-action: none;
         display: flex; align-items: center; justify-content: center;
       }
-      .split-handle::after {
-        content: '·'; color: var(--muted); font-size: 1rem; line-height: 1;
-        writing-mode: vertical-rl; letter-spacing: 2px;
-      }
+      .split-handle::after { content: ''; }
       .split-handle.dragging, .split-handle:hover { background: var(--navy); }
 
       .parallel-grid.split .panel-head              { padding: 0.4rem 0.3rem; }
