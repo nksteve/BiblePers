@@ -1492,13 +1492,29 @@ function doMultiCopy() {
     blocks.push([header, ...verseLines].join('\n'));
   }
 
-  const fullText = blocks.join('\n').replace(/\n{2,}/g, '\n').trim();
-  navigator.clipboard.writeText(fullText).then(() => {
+  const plainText = blocks.join('\n').replace(/\n{2,}/g, '\n').trim();
+  // Use HTML clipboard so Google Docs pastes <br> as line breaks (not paragraph gaps)
+  const htmlLines = blocks.map(b => b.split('\n').join('<br>')).join('<br>');
+  const htmlText  = `<span style="font-family:inherit">${htmlLines}</span>`;
+
+  const writeHtml = async () => {
+    const item = new ClipboardItem({
+      'text/html':  new Blob([htmlText],  { type: 'text/html' }),
+      'text/plain': new Blob([plainText], { type: 'text/plain' })
+    });
+    await navigator.clipboard.write([item]);
+  };
+
+  const done = () => {
     const btn = document.getElementById('multiCopyBtn');
     btn.textContent = `✓ Copied ${verses.length} verse${verses.length > 1 ? 's' : ''}`;
     btn.classList.add('ok');
     setTimeout(clearAllSelection, 2000);
-  }).catch(() => {});
+  };
+
+  writeHtml().then(done).catch(() =>
+    navigator.clipboard.writeText(plainText).then(done).catch(() => {})
+  );
 }
 
 function clearAllSelection() {
