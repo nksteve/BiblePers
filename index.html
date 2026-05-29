@@ -255,6 +255,8 @@
       font-size: calc(1.05rem * var(--fs-scale-tam));
       line-height: 2;
     }
+    /* Amplified Bible inline additions */
+    .vtxt i, .vtxt em { font-style: italic; opacity: 0.82; }
 
     /* ── Custom reading colors ── */
     #engContent, #tamContent {
@@ -1567,6 +1569,14 @@ async function fetchTamilBolls(bookNum, ch) {
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// Strip all HTML tags — used for clipboard plain-text
+function stripTags(s) {
+  return String(s).replace(/<[^>]*>/g, '');
+}
+// Escape but allow safe inline tags (<i> <b> <em> <strong>) to render
+function safeInline(s) {
+  return esc(s).replace(/&lt;(\/?(?:i|b|em|strong))&gt;/g, '<$1>');
+}
 
 const loadingHTML = () =>
   `<div class="state-box"><div class="spinner"></div><span>Loading…</span></div>`;
@@ -1580,9 +1590,9 @@ function renderEnglish(result, ref) {
   const verses = (result.value.verses || []).map(v => ({ num: v.verse, text: v.text.trim() }));
   if (!verses.length) return errorHTML('No verses found.');
   return '<div class="verses-wrap">' + verses.map(v =>
-    `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${v.num}" data-vtxt="${esc(v.text)}">` +
+    `<div class="verse" data-ref="${esc(ref||'')}" data-vnum="${v.num}" data-vtxt="${esc(stripTags(v.text))}">` +
     `<span class="vnum">${v.num}</span>` +
-    `<span class="vtxt">${esc(v.text)}</span>` +
+    `<span class="vtxt">${safeInline(v.text)}</span>` +
     `<button class="vcopy">copy</button>` +
     `</div>`
   ).join('') + '</div>';
