@@ -1455,6 +1455,10 @@ function updateMultiBar() {
   bar.classList.add('visible');
 }
 
+function toSup(n) {
+  return String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]).join('');
+}
+
 function buildVerseRange(nums) {
   // [5,6,7,8] → "5-8"  |  [5,7,8,12] → "5,7-8,12"
   if (!nums.length) return '';
@@ -1486,35 +1490,21 @@ function doMultiCopy() {
 
   const blocks = [];
   for (const [ref, vlist] of Object.entries(groupMap)) {
-    const range = buildVerseRange(vlist.map(v => v.vnum));
+    const range  = buildVerseRange(vlist.map(v => v.vnum));
     const header = ref ? `${ref}:${range}` : `v.${range}`;
-    const verseLines = vlist.map(v => `${v.vnum} ${v.text}`);
-    blocks.push([header, ...verseLines].join('\n'));
+    // All verse texts flow on ONE line with superscript numbers — no \n between verses
+    const body   = vlist.map(v => `${toSup(v.vnum)} ${v.text}`).join('  ');
+    blocks.push(`${header}\n${body}`);
   }
 
-  const plainText = blocks.join('\n').replace(/\n{2,}/g, '\n').trim();
-  // Use HTML clipboard so Google Docs pastes <br> as line breaks (not paragraph gaps)
-  const htmlLines = blocks.map(b => b.split('\n').join('<br>')).join('<br>');
-  const htmlText  = `<span style="font-family:inherit">${htmlLines}</span>`;
+  const plainText = blocks.join('\n').trim();
 
-  const writeHtml = async () => {
-    const item = new ClipboardItem({
-      'text/html':  new Blob([htmlText],  { type: 'text/html' }),
-      'text/plain': new Blob([plainText], { type: 'text/plain' })
-    });
-    await navigator.clipboard.write([item]);
-  };
-
-  const done = () => {
+  navigator.clipboard.writeText(plainText).then(() => {
     const btn = document.getElementById('multiCopyBtn');
     btn.textContent = `✓ Copied ${verses.length} verse${verses.length > 1 ? 's' : ''}`;
     btn.classList.add('ok');
     setTimeout(clearAllSelection, 2000);
-  };
-
-  writeHtml().then(done).catch(() =>
-    navigator.clipboard.writeText(plainText).then(done).catch(() => {})
-  );
+  }).catch(() => {});
 }
 
 function clearAllSelection() {
