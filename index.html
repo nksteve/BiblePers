@@ -248,11 +248,47 @@
       font-family: 'Crimson Text', serif;
       font-size: calc(1.12rem * var(--fs-scale-eng));
       line-height: 1.78; flex: 1;
+      color: var(--panel-text, inherit);
     }
     .vtxt.tamil {
       font-family: 'Noto Serif Tamil', serif;
       font-size: calc(1.05rem * var(--fs-scale-tam));
       line-height: 2;
+    }
+
+    /* ── Custom reading colors ── */
+    #engContent, #tamContent {
+      background: var(--panel-bg, var(--surface));
+      transition: background 0.2s, color 0.2s;
+    }
+    .verse:hover {
+      background: color-mix(in srgb, var(--panel-bg, var(--surface)) 70%, var(--hover));
+    }
+
+    /* Color preset swatches */
+    .color-presets { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.1rem; }
+    .cpre {
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      border: 2px solid transparent; border-radius: 6px; padding: 0.22rem 0.28rem;
+      background: none; cursor: pointer; font-size: 0.68rem;
+      color: var(--text); transition: border-color 0.15s;
+    }
+    .cpre:hover { border-color: var(--muted); }
+    .cpre.active { border-color: var(--gold); }
+    .cpre-sw {
+      display: flex; align-items: center; justify-content: center;
+      width: 38px; height: 24px; border-radius: 4px;
+      font-family: 'Crimson Text', serif; font-size: 0.9rem; font-weight: bold;
+      border: 1px solid rgba(128,128,128,0.25);
+    }
+    .color-pickers-row {
+      display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+      padding: 0.35rem 0 0.1rem;
+    }
+    .cpick-item { display: flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; }
+    .cpick-item input[type="color"] {
+      width: 34px; height: 28px; padding: 2px; border: 1px solid var(--border);
+      border-radius: 5px; cursor: pointer; background: var(--surface);
     }
 
     /* Per-panel font controls (shown in panel header) */
@@ -697,6 +733,39 @@
           <span class="brightness-val" id="brightnessVal">100%</span>
         </div>
       </div>
+      <div class="sp-row" style="flex-direction:column; align-items:flex-start; gap:0.25rem;">
+        <div class="sp-row-label">Reading Colors</div>
+        <div class="color-presets" id="colorPresets">
+          <button class="cpre" id="cpre-auto" onclick="setColorPreset('','','auto')" title="Auto">
+            <span class="cpre-sw" style="background:#f7f4ef;color:#1f1f1f">Aa</span><span>Auto</span>
+          </button>
+          <button class="cpre" id="cpre-sepia" onclick="setColorPreset('#4a2e18','#f5ede0','sepia')" title="Sepia">
+            <span class="cpre-sw" style="background:#f5ede0;color:#4a2e18">Aa</span><span>Sepia</span>
+          </button>
+          <button class="cpre" id="cpre-night" onclick="setColorPreset('#c0d8f8','#0f1e3d','night')" title="Night Blue">
+            <span class="cpre-sw" style="background:#0f1e3d;color:#c0d8f8">Aa</span><span>Night</span>
+          </button>
+          <button class="cpre" id="cpre-yellow" onclick="setColorPreset('#ffe066','#1a3a6e','yellow')" title="Yellow on Blue">
+            <span class="cpre-sw" style="background:#1a3a6e;color:#ffe066">Aa</span><span>Yellow</span>
+          </button>
+          <button class="cpre" id="cpre-forest" onclick="setColorPreset('#a8e8c0','#0a2010','forest')" title="Forest">
+            <span class="cpre-sw" style="background:#0a2010;color:#a8e8c0">Aa</span><span>Forest</span>
+          </button>
+          <button class="cpre" id="cpre-contrast" onclick="setColorPreset('#ffffff','#000000','contrast')" title="High Contrast">
+            <span class="cpre-sw" style="background:#000;color:#fff">Aa</span><span>B&amp;W</span>
+          </button>
+        </div>
+        <div class="color-pickers-row">
+          <div class="cpick-item">
+            <span>Text</span>
+            <input type="color" id="textColorPicker" value="#1f1f1f" oninput="onColorPickerChange()">
+          </div>
+          <div class="cpick-item">
+            <span>Background</span>
+            <input type="color" id="bgColorPicker" value="#f7f4ef" oninput="onColorPickerChange()">
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Font size -->
@@ -934,6 +1003,9 @@ let splitLayout  = localStorage.getItem('splitLayout') === 'true';
 let splitRatio   = parseFloat(localStorage.getItem('splitRatio') || '50');
 let panelSwapped = localStorage.getItem('panelSwapped') === 'true';
 let isDragging   = false;
+let customTextColor = localStorage.getItem('customTextColor') || '';
+let customBgColor   = localStorage.getItem('customBgColor')   || '';
+let activePreset    = localStorage.getItem('activePreset')    || 'auto';
 
 function initSettings() {
   // Dark mode
@@ -960,6 +1032,9 @@ function initSettings() {
   document.getElementById('transSelect').value    = engTrans;
   document.getElementById('tamTransSelect').value = tamTrans;
 
+  // Reading colors
+  applyReadingColors();
+
   // API key (optional override)
   const inp = document.getElementById('apiKeyInput');
   inp.value = apiKey;
@@ -981,6 +1056,50 @@ function changeBrightness(val) {
   brightness = parseFloat(val);
   localStorage.setItem('brightness', brightness);
   applyBrightness();
+}
+
+// ── Reading color theme ──────────────────────────────────────────────────────
+function _applyColorVars(text, bg) {
+  const root = document.documentElement;
+  if (text) root.style.setProperty('--panel-text', text);
+  else      root.style.removeProperty('--panel-text');
+  if (bg)   root.style.setProperty('--panel-bg', bg);
+  else      root.style.removeProperty('--panel-bg');
+}
+
+function applyReadingColors() {
+  _applyColorVars(customTextColor, customBgColor);
+  // Sync color picker values
+  const tp = document.getElementById('textColorPicker');
+  const bp = document.getElementById('bgColorPicker');
+  if (tp) tp.value = customTextColor || '#1f1f1f';
+  if (bp) bp.value = customBgColor   || '#f7f4ef';
+  // Highlight active preset
+  document.querySelectorAll('.cpre').forEach(b => b.classList.remove('active'));
+  const active = document.getElementById('cpre-' + activePreset);
+  if (active) active.classList.add('active');
+}
+
+function setColorPreset(text, bg, name) {
+  customTextColor = text;
+  customBgColor   = bg;
+  activePreset    = name;
+  localStorage.setItem('customTextColor', text);
+  localStorage.setItem('customBgColor',   bg);
+  localStorage.setItem('activePreset',    name);
+  applyReadingColors();
+}
+
+function onColorPickerChange() {
+  customTextColor = document.getElementById('textColorPicker').value;
+  customBgColor   = document.getElementById('bgColorPicker').value;
+  activePreset    = 'custom';
+  localStorage.setItem('customTextColor', customTextColor);
+  localStorage.setItem('customBgColor',   customBgColor);
+  localStorage.setItem('activePreset',    'custom');
+  _applyColorVars(customTextColor, customBgColor);
+  // Deselect all presets when picking custom
+  document.querySelectorAll('.cpre').forEach(b => b.classList.remove('active'));
 }
 
 function applyDarkMode(save = true) {
