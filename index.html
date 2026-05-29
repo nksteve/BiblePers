@@ -1492,18 +1492,47 @@ function updateMultiBar() {
   bar.classList.add('visible');
 }
 
+function buildVerseRange(nums) {
+  // [5,6,7,8] → "5-8"  |  [5,7,8,12] → "5,7-8,12"
+  if (!nums.length) return '';
+  const sorted = [...nums].sort((a, b) => a - b);
+  const parts = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === prev + 1) { prev = sorted[i]; }
+    else { parts.push(start === prev ? `${start}` : `${start}-${prev}`); start = prev = sorted[i]; }
+  }
+  parts.push(start === prev ? `${start}` : `${start}-${prev}`);
+  return parts.join(',');
+}
+
 function doMultiCopy() {
   if (!activeSelectPanel) return;
   const selected = document.querySelectorAll(`#${activeSelectPanel}Content .v-selected`);
-  const lines = Array.from(selected).map(v => {
-    const ref  = v.dataset.ref  || '';
-    const vnum = v.dataset.vnum || '';
-    const text = v.dataset.vtxt || '';
-    return ref ? `${ref}:${vnum}  ${text}` : `v.${vnum}  ${text}`;
-  });
-  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+  const verses = Array.from(selected).map(v => ({
+    ref:  v.dataset.ref  || '',
+    vnum: parseInt(v.dataset.vnum) || 0,
+    text: v.dataset.vtxt || ''
+  }));
+
+  // Group by chapter ref (handles edge case of selection spanning chapters)
+  const groupMap = {};
+  for (const v of verses) {
+    (groupMap[v.ref] = groupMap[v.ref] || []).push(v);
+  }
+
+  const blocks = [];
+  for (const [ref, vlist] of Object.entries(groupMap)) {
+    const range = buildVerseRange(vlist.map(v => v.vnum));
+    const header = ref ? `${ref}:${range}` : `v.${range}`;
+    const verseLines = vlist.map(v => `${v.vnum} ${v.text}`);
+    blocks.push([header, ...verseLines].join('\n'));
+  }
+
+  const fullText = blocks.join('\n\n');
+  navigator.clipboard.writeText(fullText).then(() => {
     const btn = document.getElementById('multiCopyBtn');
-    btn.textContent = `✓ Copied ${lines.length} verse${lines.length > 1 ? 's' : ''}`;
+    btn.textContent = `✓ Copied ${verses.length} verse${verses.length > 1 ? 's' : ''}`;
     btn.classList.add('ok');
     setTimeout(clearAllSelection, 2000);
   }).catch(() => {});
